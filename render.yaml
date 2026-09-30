@@ -1,0 +1,20 @@
+# Render.com Blueprint - isse website lagana 2 click ka kaam ban jaata hai
+# (GitHub par upload karne ke baad render.com -> New -> Blueprint -> repo chuno)
+services:
+  - type: web
+    name: ticket-website
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: AGENT_USERNAME
+        value: vishwajeet
+      - key: AGENT_EMAIL
+        value: vishwajeetpar666@gmail.com
+      - key: AGENT_MOBILE
+        value: "9530646737"
+      - key: AGENT_PASSWORD
+        sync: false
