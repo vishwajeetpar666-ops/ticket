@@ -245,6 +245,74 @@
     .tc-foot{padding:10px 12px;}
     .modal{border-radius:12px;}
   }
+
+  /* ================= BLACK (DARK) THEME ================= */
+  :root{
+    --navy:#111726; --navy-dark:#0a0e17; --navy-light:#1b2740;
+    --orange:#f97316; --orange-dark:#ea580c;
+    --bg:#070a10; --card:#121722; --border:#242c3d;
+    --text:#e8ecf5; --muted:#93a0b8; --green:#22c55e; --red:#ef4444;
+    --link:#60a5fa;
+  }
+  body{background:#070a10 !important;color:var(--text);}
+  .topbar{background:#0d121c;border-bottom:1px solid var(--border);}
+  .nav{background:#0d121c;border-bottom:1px solid var(--border);}
+  .nav-inner button{color:#aab6cc;}
+  .nav-inner button.active{color:var(--orange);background:rgba(249,115,22,.12);}
+  .brandmark .t1{color:#ffffff;}
+  .hero-strip{background:#0a0e17;}
+  .card,.train-card,.stat-box,.timer-box,.login-card,.modal{background:var(--card);border-color:var(--border);}
+  .card-h{background:linear-gradient(90deg,#161d2b,#121722);color:#ffffff;border-bottom-color:var(--border);}
+  .field input,.search-grid select,.station-field input,.form-row input,.form-row select,.copy-area{background:#0f141f;border-color:#2a3348;color:var(--text);}
+  .field label,.station-field .cap{color:#aab6cc;}
+  table.plist th{background:#161d2b;color:#93a0b8;}
+  table.plist td{border-bottom-color:#1e2636;color:var(--text);}
+  .autocomplete{background:#121722;border-color:#2a3348;}
+  .autocomplete div{border-bottom-color:#1e2636;color:var(--text);}
+  .autocomplete div:hover{background:#1a2130;}
+  .modal-h{background:#0a0e17;}
+  .modal-b{background:var(--card);}
+  .modal-f{border-top-color:var(--border);}
+  .empty-state{color:var(--muted);}
+  .warn-box{background:#2a1f10;border-color:#5a3d18;color:#f3c98b;}
+  .msg.err{background:#2a1414;color:#ff9b9b;}
+  .msg.ok{background:#0f2419;color:#7ee2a8;}
+  .login-note,.note{color:#93a0b8;}
+  footer{background:#0d121c;border-top-color:var(--border);color:#93a0b8;}
+  .login-tabs button{background:#0f141f;color:#93a0b8;}
+  .login-tabs button.active{background:#121722;color:#ffffff;}
+  .tc-head{background:#161d2b;}
+  .tc-foot{border-top-color:var(--border);}
+  .cls-tabs button{color:#93a0b8;}
+  .btn-grey{background:#1a2130;color:var(--text);border-color:#2a3348;}
+  .btn-sm{background:#1a2130;color:var(--text);border-color:#2a3348;}
+  .btn-logout{background:transparent;color:#ff9b9b;border-color:#3a2a2a;}
+  .lang-btn.app{background:#1a2130;color:#ffffff;border-color:#2a3348;}
+  .devotp{background:#2a1f10;border-color:#5a3d18;color:#f3c98b;}
+  .toast{background:#1b2740;}
+  .login-head{background:linear-gradient(135deg,#0a0e17,#1b2740);}
+  .login-body{background:var(--card);}
+  .quota-bar{background:#161d2b;}
+  .pax-row{border-color:var(--border);}
+  .steps{background:#0f141f;}
+  .stepbar{background:#0f141f;}
+  .avail-cell{border-color:var(--border);}
+  .tk-pnr{background:#161d2b;}
+  .ticket{border-color:#2a3348;}
+
+  /* ================= DARK THEME - contrast fix ================= */
+  .note,.login-note,.empty-state,.field label,.station-field .cap,.stat-box .k,.timer-box .sub,.tc-times .dur{color:#aab8cf !important;}
+  input::placeholder,textarea::placeholder{color:#8b98b1 !important;opacity:1;}
+  #liveClock,#welcomeUser{color:#c9d4e6;}
+  table.plist th{color:#aab8cf;}
+  .brandmark .t2{color:#93a0b8;}
+  .results-head .cnt{color:#e8ecf5;}
+  .tc-times .stn{color:#dbe3f0;}
+  .card-h{color:#ffffff;}
+  .train-card .tname{color:#ffffff;}
+  .tno{color:#93a0b8;}
+  .btn-search,.btn-orange,.btn-book{color:#fff;}
+  .login-tabs button{color:#aab8cf;}
 </style>
 </head>
 <body>
