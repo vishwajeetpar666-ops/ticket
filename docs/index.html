@@ -290,7 +290,14 @@
               <option value="Driving Licence">Driving Licence (Indian passenger)</option>
               <option value="Passport">Passport (Foreign national)</option>
             </select></div>
-          <div class="login-note" data-en="Only the ID TYPE is saved here &mdash; never the ID number. Carry the original document while travelling. Real document verification happens only on official government / IRCTC systems." data-hi="यहाँ केवल आईडी का प्रकार सेव होता है &mdash; नंबर कभी नहीं। यात्रा के समय original दस्तावेज़ साथ रखें। असली दस्तावेज़ जांच केवल सरकारी / IRCTC प्रणालियों पर होती है।">Only the ID TYPE is saved here &mdash; never the ID number. Carry the original document while travelling. Real document verification happens only on official government / IRCTC systems.</div>
+          <div class="field"><label data-en="ID Number (Aadhaar / PAN / Driving Licence / Passport)" data-hi="आईडी नंबर (आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट)">ID Number (Aadhaar / PAN / Driving Licence / Passport)</label>
+            <input id="rgIdNum" placeholder="Enter your ID number" autocomplete="off">
+            <div class="note" data-html="1" data-en="Aadhaar ka poora number save nahin hota &mdash; sirf aakhri 4 ank (UIDAI guidance). PAN / DL / Passport number aapke booking record ke liye save hota hai. Verification sirf official government / IRCTC systems par hoti hai." data-hi="आधार का पूरा नंबर सेव नहीं होता &mdash; केवल अंतिम 4 अंक (UIDAI guidance)। पैन / DL / पासपोर्ट नंबर आपके बुकिंग रिकॉर्ड के लिए सेव होता है। सत्यापन केवल सरकारी / IRCTC प्रणालियों पर होता है।">Aadhaar ka poora number save nahin hota &mdash; sirf aakhri 4 ank (UIDAI guidance). PAN / DL / Passport number aapke booking record ke liye save hota hai. Verification sirf official government / IRCTC systems par hoti hai.</div>
+          </div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin-bottom:12px;line-height:1.5">
+            <input type="checkbox" id="rgConsent" style="margin-top:2px;accent-color:var(--orange)">
+            <span data-en="I confirm these details are correct, and I agree they are stored for my booking record." data-hi="मैं पुष्टि करता/करती हूँ कि ये जानकारी सही है, और मैं सहमत हूँ कि यह मेरे बुकिंग रिकॉर्ड के लिए सेव होगी।">I confirm these details are correct, and I agree they are stored for my booking record.</span>
+          </label>
           <button class="btn-orange" id="btnReg" onclick="doRegister()" data-en="SEND OTP" data-hi="OTP भेजें">SEND OTP</button>
         </div>
         <div id="regStep2" class="hidden">
@@ -415,9 +422,13 @@
             <div><div class="cap" data-en="FOOD" data-hi="खाना">FOOD</div><select id="pfFood"><option>No Food</option><option>Veg</option><option>Non Veg</option></select></div>
             <button class="btn-search" style="height:38px" onclick="addPassenger()" data-en="+ ADD" data-hi="+ जोड़ें">+ ADD</button>
           </div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr">
+            <div><div class="cap" data-en="ID PROOF (optional)" data-hi="आईडी प्रूफ (वैकल्पिक)">ID PROOF (optional)</div><select id="pfIdType"><option value="">-- none --</option><option>Aadhaar Card</option><option>PAN Card</option><option>Driving Licence</option><option>Passport</option></select></div>
+            <div><div class="cap" data-en="ID NUMBER (optional)" data-hi="आईडी नंबर (वैकल्पिक)">ID NUMBER (optional)</div><input id="pfIdNum" placeholder="ID number"></div>
+          </div>
           <div style="overflow-x:auto">
             <table class="plist" id="passTable">
-              <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Gender</th><th>Berth</th><th>Food</th><th>Action</th></tr></thead>
+              <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Gender</th><th>Berth</th><th>Food</th><th data-en="ID Proof" data-hi="आईडी प्रूफ">ID Proof</th><th>Action</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -599,7 +610,12 @@
         if (users[k].mobile === mob) return jsonResp({ error: 'This mobile number is already registered.' }, 409);
         if (users[k].email === em) return jsonResp({ error: 'This email is already registered.' }, 409);
       }
-      var nu = { id: uid(), role: 'customer', name: name, username: un, email: em, mobile: mob, pass: pw, idType: String(body.idType || 'Aadhaar Card'), verified: false, created: new Date().toISOString() };
+      var idType = String(body.idType || 'Aadhaar Card');
+      var rawId = String(body.idNumber || '').replace(/[^A-Za-z0-9]/g, '');
+      var maskedId = rawId ? (idType === 'Aadhaar Card' ? ('XXXX XXXX ' + rawId.slice(-4)) : (rawId.slice(0, 2) + 'XXXX' + rawId.slice(-4))) : '';
+      var nu = { id: uid(), role: 'customer', name: name, username: un, email: em, mobile: mob, pass: pw,
+                 idType: idType, idMasked: maskedId, idNumber: (idType === 'Aadhaar Card' ? maskedId : rawId),
+                 verified: false, created: new Date().toISOString() };
       users[un] = nu; save('vpr_users', users);
       var code = String(100000 + Math.floor(Math.random() * 900000));
       var otps = load('vpr_otps', {});
@@ -668,7 +684,11 @@
         var pn = String(body.name || '').trim(), pa = parseInt(body.age, 10);
         if (!pn || pn.length < 2) return jsonResp({ error: 'Please enter the passenger name (as per ID).' }, 400);
         if (!pa || pa < 1 || pa > 120) return jsonResp({ error: 'Please enter a valid age (1-120).' }, 400);
-        var np = { id: uid(), userId: session.id, name: pn.toUpperCase(), age: pa, gender: body.gender || 'Male', berth: body.berth || 'No Preference', food: body.food || 'No Food' };
+        var pType = String(body.idType || ''), pRaw = String(body.idNumber || '').replace(/[^A-Za-z0-9]/g, '');
+        var pMask = pRaw ? (pType === 'Aadhaar Card' ? ('XXXX XXXX ' + pRaw.slice(-4)) : (pRaw.slice(0, 2) + 'XXXX' + pRaw.slice(-4))) : '';
+        var np = { id: uid(), userId: session.id, name: pn.toUpperCase(), age: pa, gender: body.gender || 'Male',
+                   berth: body.berth || 'No Preference', food: body.food || 'No Food',
+                   idType: pType, idMasked: pMask };
         all.push(np); save('vpr_passengers', all);
         return jsonResp({ ok: true, passenger: np });
       }
@@ -722,7 +742,7 @@
         if (!usersA.hasOwnProperty(kk)) continue;
         var uu = usersA[kk];
         if (uu.role === 'agent') continue;
-        customers.push({ name: uu.name, username: uu.username, mobile: uu.mobile, email: uu.email, idType: uu.idType || '-', verified: uu.verified, passengers: pass.filter(function (p) { return p.userId === uu.id; }).length, created: uu.created });
+        customers.push({ name: uu.name, username: uu.username, mobile: uu.mobile, email: uu.email, idType: uu.idType || '-', idMasked: uu.idMasked || '', verified: uu.verified, passengers: pass.filter(function (p) { return p.userId === uu.id; }).length, created: uu.created });
       }
       return jsonResp({ customers: customers, stats: { total: customers.length, verified: customers.filter(function (c) { return c.verified; }).length, passengers: pass.length } });
     }
@@ -789,9 +809,13 @@ async function doRegister() {
   var mob = document.getElementById('rgMob').value.trim();
   var em = document.getElementById('rgEmail').value.trim();
   var pw = document.getElementById('rgPass').value;
+  var idNum = ((document.getElementById('rgIdNum') || {}).value || '').trim();
+  var consentEl = document.getElementById('rgConsent');
   var btn = document.getElementById('btnReg'); btn.disabled = true;
+  if (!idNum) { showMsg('rgMsg', LANG === 'hi' ? 'Apna ID number dalen.' : 'Please enter your ID number.', false); btn.disabled = false; return; }
+  if (!consentEl || !consentEl.checked) { showMsg('rgMsg', LANG === 'hi' ? 'Kripya confirmation box tick karen.' : 'Please tick the confirmation box.', false); btn.disabled = false; return; }
   try {
-    var r = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, username: un, mobile: mob, email: em, password: pw, idType: (document.getElementById('rgIdType') || {}).value || '' }) });
+    var r = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, username: un, mobile: mob, email: em, password: pw, idType: (document.getElementById('rgIdType') || {}).value || '', idNumber: idNum }) });
     regUsername = un;
     document.getElementById('regStep1').classList.add('hidden');
     document.getElementById('regStep2').classList.remove('hidden');
@@ -1066,8 +1090,9 @@ function renderPassengers(list) {
   var tb = document.querySelector('#passTable tbody');
   tb.innerHTML = list.length ? list.map(function (p, i) {
     return '<tr><td>' + (i + 1) + '</td><td><b>' + p.name + '</b></td><td>' + p.age + '</td><td>' + p.gender + '</td><td>' + p.berth + '</td><td>' + p.food +
+      '</td><td>' + (p.idType ? (p.idType + '<br><span class="note">' + (p.idMasked || '') + '</span>') : '-') +
       '</td><td><button class="btn-sm red" onclick="delPassenger(\'' + p.id + '\')">' + (LANG === 'hi' ? 'हटाएं' : 'Delete') + '</button></td></tr>';
-  }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई यात्री सेव नहीं है। ऊपर फॉर्म से जोड़ें।' : 'No passengers saved yet. Add them with the form above.') + '</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई यात्री सेव नहीं है। ऊपर फॉर्म से जोड़ें।' : 'No passengers saved yet. Add them with the form above.') + '</td></tr>';
 }
 async function addPassenger() {
   var n = document.getElementById('pfName').value.trim();
@@ -1076,8 +1101,10 @@ async function addPassenger() {
   try {
     await api('/api/passengers', { method: 'POST', body: JSON.stringify({
       name: n, age: a, gender: document.getElementById('pfGen').value,
-      berth: document.getElementById('pfBerth').value, food: document.getElementById('pfFood').value }) });
+      berth: document.getElementById('pfBerth').value, food: document.getElementById('pfFood').value,
+      idType: (document.getElementById('pfIdType') || {}).value || '', idNumber: (document.getElementById('pfIdNum') || {}).value || '' }) });
     document.getElementById('pfName').value = ''; document.getElementById('pfAge').value = '';
+    if (document.getElementById('pfIdNum')) document.getElementById('pfIdNum').value = '';
     loadPassengers();
     toast(LANG === 'hi' ? 'यात्री सेव हो गया' : 'Passenger saved');
   } catch (e) { toast(e.message); }
@@ -1113,7 +1140,7 @@ async function loadAgent() {
     var tb = document.querySelector('#custTable tbody');
     tb.innerHTML = r.customers.length ? r.customers.map(function (c, i) {
       return '<tr><td>' + (i + 1) + '</td><td><b>' + c.name + '</b></td><td>' + c.username + '</td><td>' + c.mobile + '</td><td>' + c.email +
-        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + (c.idType || '-') + '</td><td>' + c.passengers + '</td></tr>';
+        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + (c.idType || '-') + (c.idMasked ? '<br><span class="note">' + c.idMasked + '</span>' : '') + '</td><td>' + c.passengers + '</td></tr>';
     }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई ग्राहक नहीं।' : 'No customers registered yet.') + '</td></tr>';
   } catch (e) {}
 }
