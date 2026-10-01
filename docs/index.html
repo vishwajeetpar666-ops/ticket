@@ -284,14 +284,14 @@
           <div class="field"><label data-en="Email (OTP will come here too)" data-hi="ईमेल (OTP यहाँ भी आएगा)">Email (OTP will come here too)</label><input id="rgEmail" type="email" placeholder="email@example.com"></div>
           <div class="field"><label data-en="Password" data-hi="पासवर्ड">Password</label><input id="rgPass" type="password" placeholder="At least 6 characters"></div>
           <div class="field"><label data-en="ID proof you will carry while travelling" data-hi="यात्रा के समय आप जो आईडी प्रूफ रखेंगे">ID proof you will carry while travelling</label>
-            <select id="rgIdType" style="width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;background:#fff">
+            <select id="rgIdType" onchange="updateIdField()" style="width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;background:#fff">
               <option value="Aadhaar Card">Aadhaar Card (Indian passenger)</option>
               <option value="PAN Card">PAN Card (Indian passenger)</option>
               <option value="Driving Licence">Driving Licence (Indian passenger)</option>
               <option value="Passport">Passport (Foreign national)</option>
             </select></div>
-          <div class="field"><label data-en="ID Number (Aadhaar / PAN / Driving Licence / Passport)" data-hi="आईडी नंबर (आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट)">ID Number (Aadhaar / PAN / Driving Licence / Passport)</label>
-            <input id="rgIdNum" placeholder="Enter your ID number" autocomplete="off">
+          <div class="field"><label id="idNumLabel">Aadhaar Number (12 digits)</label>
+            <input id="rgIdNum" placeholder="e.g. 1234 5678 9012" autocomplete="off">
             <div class="note" data-html="1" data-en="Aadhaar ka poora number save nahin hota &mdash; sirf aakhri 4 ank (UIDAI guidance). PAN / DL / Passport number aapke booking record ke liye save hota hai. Verification sirf official government / IRCTC systems par hoti hai." data-hi="आधार का पूरा नंबर सेव नहीं होता &mdash; केवल अंतिम 4 अंक (UIDAI guidance)। पैन / DL / पासपोर्ट नंबर आपके बुकिंग रिकॉर्ड के लिए सेव होता है। सत्यापन केवल सरकारी / IRCTC प्रणालियों पर होता है।">Aadhaar ka poora number save nahin hota &mdash; sirf aakhri 4 ank (UIDAI guidance). PAN / DL / Passport number aapke booking record ke liye save hota hai. Verification sirf official government / IRCTC systems par hoti hai.</div>
           </div>
           <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;margin-bottom:12px;line-height:1.5">
@@ -793,6 +793,7 @@ async function api(url, opts) {
 
 /* ================= tabs / login screen ================= */
 function switchTab(t) {
+  if (t === 'reg') { try { updateIdField(); } catch (e) {} }
   ['paneLogin', 'paneReg', 'paneAgent'].forEach(function (id) { document.getElementById(id).classList.add('hidden'); });
   document.getElementById(t === 'login' ? 'paneLogin' : t === 'reg' ? 'paneReg' : 'paneAgent').classList.remove('hidden');
   document.getElementById('tabLogin').classList.toggle('active', t === 'login');
@@ -813,6 +814,10 @@ async function doRegister() {
   var consentEl = document.getElementById('rgConsent');
   var btn = document.getElementById('btnReg'); btn.disabled = true;
   if (!idNum) { showMsg('rgMsg', LANG === 'hi' ? 'Apna ID number dalen.' : 'Please enter your ID number.', false); btn.disabled = false; return; }
+  var idTypeSel = ((document.getElementById('rgIdType') || {}).value) || 'Aadhaar Card';
+  var rule = ID_RULES[idTypeSel] || ID_RULES['Aadhaar Card'];
+  var cleanId = idNum.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!rule.re.test(cleanId)) { showMsg('rgMsg', (LANG === 'hi' ? 'Galat number: ' : 'Invalid number: ') + rule.msg, false); btn.disabled = false; return; }
   if (!consentEl || !consentEl.checked) { showMsg('rgMsg', LANG === 'hi' ? 'Kripya confirmation box tick karen.' : 'Please tick the confirmation box.', false); btn.disabled = false; return; }
   try {
     var r = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, username: un, mobile: mob, email: em, password: pw, idType: (document.getElementById('rgIdType') || {}).value || '', idNumber: idNum }) });
@@ -1145,6 +1150,22 @@ async function loadAgent() {
   } catch (e) {}
 }
 
+/* ================= ID type rules + dynamic field ================= */
+var ID_RULES = {
+  'Aadhaar Card': { label: 'Aadhaar Number (12 digits)', ph: 'e.g. 1234 5678 9012', re: /^\d{12}$/, msg: 'Aadhaar number 12 ank ka hona chahiye (jaise 1234 5678 9012).' },
+  'PAN Card': { label: 'PAN Number', ph: 'e.g. ABCDE1234F', re: /^[A-Z]{5}[0-9]{4}[A-Z]$/, msg: 'PAN ka format: ABCDE1234F' },
+  'Driving Licence': { label: 'Driving Licence Number', ph: 'e.g. PB1020190012345', re: /^[A-Z0-9]{8,20}$/, msg: 'Driving Licence number 8-20 characters ka hona chahiye.' },
+  'Passport': { label: 'Passport Number', ph: 'e.g. M1234567', re: /^[A-Z][0-9]{7}$/, msg: 'Passport ka format: M1234567' }
+};
+function updateIdField() {
+  var sel = document.getElementById('rgIdType');
+  var t = (sel && sel.value) || 'Aadhaar Card';
+  var r = ID_RULES[t] || ID_RULES['Aadhaar Card'];
+  var lab = document.getElementById('idNumLabel'), inp = document.getElementById('rgIdNum');
+  if (lab) lab.textContent = r.label;
+  if (inp) { inp.placeholder = r.ph; inp.value = inp.value.toUpperCase(); }
+}
+
 /* ================= integration settings (dev mode) ================= */
 function loadSettings() {
   try {
@@ -1210,6 +1231,7 @@ document.getElementById('agPass').addEventListener('keydown', function (e) { if 
 /* ================= init ================= */
 applyLang();
 loadSettings();
+updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
 </script>
