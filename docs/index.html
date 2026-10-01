@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vishwajeet Parmar Rajput Train Ticket - Customer Portal</title>
+<style>
+  :root{
+    --navy:#1b2f6e; --navy-dark:#122353; --navy-light:#2e4a9e;
+    --orange:#f47129; --orange-dark:#d95d18;
+    --bg:#f2f4f8; --card:#ffffff; --border:#dfe3ec;
+    --text:#22293a; --muted:#6b7386; --green:#1d8a4b; --red:#c62f2f;
+    --link:#1c56c4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,Helvetica,sans-serif;}
+  body{background:var(--bg);color:var(--text);font-size:14px;}
+  .hidden{display:none !important;}
+  button{cursor:pointer;}
+  a{color:var(--link);}
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-light) 100%);padding:20px;}
+  .login-card{background:#fff;border-radius:12px;width:100%;max-width:440px;overflow:hidden;
+    box-shadow:0 20px 50px rgba(0,0,0,.35);}
+  .login-head{background:var(--navy);color:#fff;padding:22px 24px;text-align:center;position:relative;}
+  .login-head .brand{font-size:17px;font-weight:700;letter-spacing:.3px;}
+  .login-head .sub{font-size:12px;opacity:.85;margin-top:4px;}
+  .lang-btn{position:absolute;top:10px;right:12px;background:rgba(255,255,255,.15);color:#fff;
+    border:1px solid rgba(255,255,255,.45);border-radius:4px;padding:4px 10px;font-size:11px;font-weight:700;}
+  .lang-btn:hover{background:rgba(255,255,255,.3);}
+  .lang-btn.app{position:static;color:var(--navy);border-color:#c9cfdc;background:#fff;}
+  .login-tabs{display:flex;border-bottom:1px solid var(--border);}
+  .login-tabs button{flex:1;padding:12px 6px;background:#f7f8fb;border:none;font-size:12px;
+    font-weight:600;color:var(--muted);border-bottom:3px solid transparent;}
+  .login-tabs button.active{background:#fff;color:var(--navy);border-bottom-color:var(--orange);}
+  .login-body{padding:22px 24px 26px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px;}
+  .field input{width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;outline:none;background:#fff;}
+  .field input:focus{border-color:var(--navy-light);box-shadow:0 0 0 2px rgba(46,74,158,.15);}
+  .btn-orange{background:var(--orange);border:none;color:#fff;font-size:14px;font-weight:700;
+    padding:11px 20px;border-radius:5px;width:100%;}
+  .btn-orange:hover{background:var(--orange-dark);}
+  .btn-orange:disabled{background:#e8a47e;cursor:not-allowed;}
+  .msg{font-size:12.5px;margin-top:10px;padding:8px 10px;border-radius:5px;display:none;}
+  .msg.err{background:#fdecec;color:var(--red);display:block;}
+  .msg.ok{background:#e8f7ee;color:var(--green);display:block;}
+  .login-note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5;}
+  .otp-input{font-size:24px !important;letter-spacing:10px !important;text-align:center;font-weight:700;}
+  .devotp{background:#fff4e6;border:1px solid #f3d4bd;border-radius:6px;padding:10px 12px;font-size:13px;color:#7a4a12;margin-top:10px;display:none;}
+  .devotp b{font-size:20px;letter-spacing:6px;}
+
+  /* ---------- APP ---------- */
+  #app{display:flex;flex-direction:column;min-height:100vh;}
+  .topbar{background:#fff;border-bottom:1px solid var(--border);}
+  .topbar-inner{max-width:1180px;margin:auto;display:flex;align-items:center;gap:14px;padding:10px 16px;flex-wrap:wrap;}
+  .brandmark{display:flex;align-items:center;gap:10px;}
+  .brandmark .logo{width:42px;height:42px;border-radius:50%;background:var(--navy);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;}
+  .brandmark .t1{font-size:15px;font-weight:800;color:var(--navy);line-height:1.15;}
+  .brandmark .t2{font-size:10.5px;color:var(--muted);}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  #liveClock{font-size:12px;color:var(--muted);}
+  #welcomeUser{font-size:12.5px;font-weight:600;color:var(--text);}
+  #welcomeUser .verified{color:var(--green);font-size:11px;}
+  .btn-logout{background:none;border:1px solid #c9cfdc;border-radius:4px;padding:6px 12px;font-size:12px;color:var(--red);font-weight:600;}
+  .nav{background:#fff;border-bottom:1px solid var(--border);}
+  .nav-inner{max-width:1180px;margin:auto;display:flex;gap:4px;padding:0 10px;overflow-x:auto;}
+  .nav-inner button{background:none;border:none;padding:12px 14px;font-size:12px;font-weight:700;
+    color:#414a63;letter-spacing:.4px;border-bottom:3px solid transparent;white-space:nowrap;}
+  .nav-inner button.active{color:var(--orange);border-bottom-color:var(--orange);}
+  .hero-strip{background:var(--navy);color:#fff;text-align:center;font-size:12.5px;padding:7px 10px;}
+  .hero-strip b{color:#ffce7a;}
+  main{flex:1;max-width:1180px;width:100%;margin:auto;padding:18px 16px 40px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:18px;}
+  .card-h{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;color:var(--navy-dark);}
+  .card-b{padding:16px;}
+  .note{font-size:11px;color:var(--muted);line-height:1.5;}
+  .warn-box{background:#fff6ea;border:1px solid #f3d4bd;border-radius:6px;padding:10px 14px;font-size:12px;color:#7a4a12;line-height:1.6;margin-bottom:12px;}
+
+  /* timer */
+  .timer-grid{display:flex;gap:14px;flex-wrap:wrap;}
+  .timer-box{flex:1;min-width:230px;background:linear-gradient(135deg,#fdf1e8,#fff);border:1px solid #f3d4bd;border-radius:8px;padding:14px 16px;}
+  .timer-box .lbl{font-size:11.5px;font-weight:700;color:#9a5a1f;letter-spacing:.4px;}
+  .timer-box .time{font-size:30px;font-weight:800;color:var(--orange-dark);margin:4px 0 2px;letter-spacing:1px;}
+  .timer-box .sub{font-size:11px;color:var(--muted);}
+
+  /* search */
+  .search-grid{display:grid;grid-template-columns:1fr 1fr 150px 170px 130px auto;gap:12px;align-items:end;}
+  @media(max-width:900px){.search-grid{grid-template-columns:1fr 1fr;}}
+  .station-field{position:relative;}
+  .station-field .cap{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;}
+  .station-field input{width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;}
+  .autocomplete{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #c9cfdc;
+    border-radius:0 0 6px 6px;max-height:240px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 18px rgba(0,0,0,.12);}
+  .autocomplete div{padding:9px 12px;font-size:13px;border-bottom:1px solid #eef0f5;display:flex;justify-content:space-between;gap:8px;}
+  .autocomplete div:hover{background:#eef2fb;cursor:pointer;}
+  .autocomplete .code{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .swap-btn{background:#fff;border:1px solid #c9cfdc;border-radius:5px;padding:10px 12px;font-size:15px;color:var(--navy);}
+  .search-grid select{width:100%;padding:10px;border:1px solid #c9cfdc;border-radius:5px;font-size:13px;background:#fff;}
+  .btn-search{background:var(--orange);color:#fff;border:none;border-radius:5px;padding:11px 22px;font-size:13.5px;font-weight:700;}
+  .btn-search:hover{background:var(--orange-dark);}
+
+  /* train results */
+  .results-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .results-head .cnt{font-size:14px;font-weight:700;}
+  .train-card{background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;}
+  .tc-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .tc-head .tname{font-size:15px;font-weight:700;}
+  .tc-head .tno{font-size:12.5px;color:var(--muted);}
+  .tc-times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:12px 16px;}
+  .tc-times .t{font-size:17px;font-weight:800;}
+  .tc-times .stn{font-size:12.5px;font-weight:600;}
+  .tc-times .dur{text-align:center;font-size:13px;font-weight:700;color:var(--muted);padding:0 8px;}
+  .cls-tabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--border);overflow-x:auto;flex-wrap:wrap;}
+  .cls-tabs button{background:none;border:none;padding:9px 12px 7px;font-size:12.5px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;}
+  .cls-tabs button.active{color:var(--orange);border-bottom-color:var(--orange);}
+  .tc-foot{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--border);flex-wrap:wrap;}
+  .tc-foot .fare{font-size:15px;font-weight:800;}
+  .tc-foot .fare small{font-size:10.5px;color:var(--muted);font-weight:600;display:block;}
+  .btn-book{margin-left:auto;background:var(--orange);border:none;color:#fff;font-size:13px;font-weight:700;padding:9px 22px;border-radius:5px;display:inline-block;text-decoration:none;}
+  .btn-book:hover{background:var(--orange-dark);}
+  .empty-state{text-align:center;padding:36px 16px;color:var(--muted);font-size:13px;line-height:1.7;}
+
+  /* passengers */
+  table.plist{width:100%;border-collapse:collapse;font-size:13px;}
+  table.plist th{background:#f5f6fa;text-align:left;padding:9px 10px;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);}
+  table.plist td{padding:9px 10px;border-bottom:1px solid #eef0f5;}
+  .btn-sm{background:#fff;border:1px solid #c9c8c8;border-radius:4px;padding:5px 10px;font-size:11.5px;font-weight:600;}
+  .btn-sm.red{color:var(--red);border-color:#e8bcbc;}
+  .form-row{display:grid;grid-template-columns:2fr 70px 110px 130px 110px auto;gap:10px;margin-bottom:10px;align-items:end;}
+  @media(max-width:900px){.form-row{grid-template-columns:1fr 1fr;}}
+  .form-row input,.form-row select{width:100%;padding:8px 10px;border:1px solid #c9cfdc;border-radius:5px;font-size:13px;background:#fff;}
+  .btn-copyall{background:var(--navy);color:#fff;border:none;border-radius:5px;padding:10px 18px;font-size:13px;font-weight:700;}
+  .copy-area{width:100%;min-height:90px;border:1px dashed #c9c8c8;border-radius:6px;padding:10px;font-size:12.5px;
+    font-family:Consolas,monospace;margin-top:10px;background:#fafbfd;resize:vertical;}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,22,40,.55);z-index:100;display:none;
+    align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 14px;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:#fff;border-radius:10px;width:100%;max-width:700px;overflow:hidden;}
+  .modal-h{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;}
+  .modal-h .t{font-size:15.5px;font-weight:700;}
+  .modal-h .x{margin-left:auto;background:none;border:none;color:#fff;font-size:20px;line-height:1;}
+  .modal-b{padding:20px;max-height:70vh;overflow-y:auto;}
+  .modal-f{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+  .btn-grey{background:#fff;border:1px solid #c9c8c8;color:var(--text);border-radius:5px;padding:10px 20px;font-size:13px;font-weight:600;}
+  .pax-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;}
+  .pax-row input{width:17px;height:17px;accent-color:var(--orange);}
+
+  /* agent */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;}
+  .stat-box{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .stat-box .v{font-size:24px;font-weight:800;color:var(--navy);}
+  .stat-box .k{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+  footer{background:#fff;border-top:1px solid var(--border);padding:16px;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.7;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy-dark);color:#fff;
+    padding:11px 22px;border-radius:6px;font-size:13px;z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:90vw;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN / REGISTER ================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="brand">VISHWAJEET PARMAR RAJPUT TRAIN TICKET</div>
+      <div class="sub" data-en="Customer Portal &bull; Registration with Mobile + Email OTP" data-hi="ग्राहक पोर्टल &bull; मोबाइल + ईमेल OTP के साथ रजिस्ट्रेशन">Customer Portal &bull; Registration with Mobile + Email OTP</div>
+      <button class="lang-btn" onclick="toggleLang()" data-en="हिंदी" data-hi="English">हिंदी</button>
+    </div>
+    <div class="login-tabs">
+      <button id="tabLogin" class="active" onclick="switchTab('login')" data-en="LOGIN" data-hi="लॉगिन">LOGIN</button>
+      <button id="tabReg" onclick="switchTab('reg')" data-en="REGISTER (WITH OTP)" data-hi="रजिस्टर (OTP के साथ)">REGISTER (WITH OTP)</button>
+      <button id="tabAgent" onclick="switchTab('agent')" data-en="AGENT / EMPLOYEE" data-hi="एजेंट / कर्मचारी">AGENT / EMPLOYEE</button>
+    </div>
+    <div class="login-body">
+
+      <!-- LOGIN -->
+      <div id="paneLogin">
+        <div class="field"><label data-en="User Name / Email / Mobile" data-hi="यूज़र नाम / ईमेल / मोबाइल">User Name / Email / Mobile</label>
+          <input id="liUser" placeholder="Enter user name, email or mobile" autocomplete="off"></div>
+        <div class="field"><label data-en="Password" data-hi="पासवर्ड">Password</label>
+          <input id="liPass" type="password" placeholder="Enter password"></div>
+        <button class="btn-orange" onclick="doLogin()" data-en="LOGIN" data-hi="लॉगिन">LOGIN</button>
+        <div id="liMsg" class="msg"></div>
+        <div class="login-note" data-en="New customer? Register with the REGISTER tab - an OTP will be sent to your mobile and email." data-hi="नया ग्राहक? रजिस्टर टैब से अकाउंट बनाएं - मोबाइल और ईमेल पर OTP आएगा।">New customer? Register with the REGISTER tab - an OTP will be sent to your mobile and email.</div>
+      </div>
+
+      <!-- REGISTER -->
+      <div id="paneReg" class="hidden">
+        <div id="regStep1">
+          <div class="field"><label data-en="Full Name" data-hi="पूरा नाम">Full Name</label><input id="rgName" placeholder="Full name"></div>
+          <div class="field"><label data-en="User Name" data-hi="यूज़र नाम">User Name</label><input id="rgUser" placeholder="3-20 characters (a-z, 0-9, _)" autocomplete="off"></div>
+          <div class="field"><label data-en="Mobile Number (OTP will come here)" data-hi="मोबाइल नंबर (OTP यहीं आएगा)">Mobile Number (OTP will come here)</label><input id="rgMob" maxlength="10" placeholder="10-digit mobile"></div>
+          <div class="field"><label data-en="Email (OTP will come here too)" data-hi="ईमेल (OTP यहाँ भी आएगा)">Email (OTP will come here too)</label><input id="rgEmail" type="email" placeholder="email@example.com"></div>
+          <div class="field"><label data-en="Password" data-hi="पासवर्ड">Password</label><input id="rgPass" type="password" placeholder="At least 6 characters"></div>
+          <button class="btn-orange" id="btnReg" onclick="doRegister()" data-en="SEND OTP" data-hi="OTP भेजें">SEND OTP</button>
+        </div>
+        <div id="regStep2" class="hidden">
+          <div class="warn-box" data-html="1" data-en="An OTP has been sent to your <b>mobile</b> and <b>email</b>. Enter it below to verify. Valid for 10 minutes." data-hi="आपके <b>मोबाइल</b> और <b>ईमेल</b> पर OTP भेज दिया गया है। सत्यापित करने के लिए नीचे डालें। 10 मिनट में मान्य।">An OTP has been sent to your <b>mobile</b> and <b>email</b>. Enter it below to verify. Valid for 10 minutes.</div>
+          <div class="field"><label data-en="Enter 6-digit OTP" data-hi="6 अंकों का OTP डालें">Enter 6-digit OTP</label>
+            <input id="otpInput" class="otp-input" maxlength="6" placeholder="------" inputmode="numeric" autocomplete="one-time-code"></div>
+          <div class="devotp" id="devOtpBox"></div>
+          <button class="btn-orange" onclick="doVerifyOtp()" data-en="VERIFY OTP" data-hi="OTP सत्यापित करें">VERIFY OTP</button>
+          <div style="margin-top:10px;text-align:center">
+            <button class="btn-sm" id="btnResend" onclick="doResendOtp()" data-en="Resend OTP" data-hi="OTP दोबारा भेजें">Resend OTP</button>
+          </div>
+        </div>
+        <div id="rgMsg" class="msg"></div>
+      </div>
+
+      <!-- AGENT -->
+      <div id="paneAgent" class="hidden">
+        <div class="warn-box" data-html="1" data-en="<b>Owner / Agent / Employee Login</b><br>Authorized personnel only. Use the registered email or mobile number and the owner password." data-hi="<b>मालिक / एजेंट / कर्मचारी लॉगिन</b><br>केवल अधिकृत लोगों के लिए। रजिस्टर्ड ईमेल या मोबाइल नंबर और मालिक का पासवर्ड डालें।"><b>Owner / Agent / Employee Login</b><br>Authorized personnel only. Use the registered email or mobile number and the owner password.</div>
+        <div class="field"><label data-en="Email or Mobile Number" data-hi="ईमेल या मोबाइल नंबर">Email or Mobile Number</label><input id="agId" placeholder="vishwajeetpar666@gmail.com / 9530646737" autocomplete="off"></div>
+        <div class="field"><label data-en="Password" data-hi="पासवर्ड">Password</label><input id="agPass" type="password" placeholder="Enter agent password"></div>
+        <button class="btn-orange" onclick="doAgentLogin()" data-en="AGENT LOGIN" data-hi="एजेंट लॉगिन">AGENT LOGIN</button>
+        <div id="agMsg" class="msg"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brandmark">
+        <div class="logo">VP</div>
+        <div><div class="t1">Vishwajeet Parmar Rajput Train Ticket</div>
+        <div class="t2" data-en="Customer Portal - Fast Tatkal Assistant" data-hi="ग्राहक पोर्टल - फास्ट तत्काल असिस्टेंट">Customer Portal - Fast Tatkal Assistant</div></div>
+      </div>
+      <div class="topbar-right">
+        <button class="lang-btn app" onclick="toggleLang()" data-en="हिंदी" data-hi="English">हिंदी</button>
+        <span id="liveClock"></span>
+        <span id="welcomeUser"></span>
+        <button class="btn-logout" onclick="doLogout()" data-en="LOGOUT" data-hi="लॉगआउट">LOGOUT</button>
+      </div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="nav-inner">
+      <button id="nv-trains" class="active" onclick="showView('trains')" data-en="TRAIN SEARCH" data-hi="ट्रेन सर्च">TRAIN SEARCH</button>
+      <button id="nv-quick" onclick="showView('quick')" data-en="PASSENGER MASTER LIST" data-hi="पैसेंजर मास्टर लिस्ट">PASSENGER MASTER LIST</button>
+      <button id="nv-agent" class="hidden" onclick="showView('agent')" data-en="AGENT PANEL" data-hi="एजेंट पैनल">AGENT PANEL</button>
+    </div>
+  </div>
+  <div class="hero-strip" data-html="1" data-en="TATKAL: <b>AC classes 10:00 AM</b> &bull; <b>Sleeper/2S 11:00 AM</b> (one day before departure from source station) &bull; Actual booking happens on the official IRCTC website/app only." data-hi="तत्काल: <b>AC श्रेणियाँ सुबह 10:00 बजे</b> &bull; <b>स्लीपर/2S सुबह 11:00 बजे</b> (सोर्स स्टेशन से रवानगी से एक दिन पहले) &bull; असली बुकिंग केवल आधिकारिक IRCTC वेबसाइट/ऐप पर होती है।">TATKAL: <b>AC classes 10:00 AM</b> &bull; <b>Sleeper/2S 11:00 AM</b> (one day before departure from source station) &bull; Actual booking happens on the official IRCTC website/app only.</div>
+
+  <main>
+    <!-- TRAIN SEARCH -->
+    <section id="view-trains">
+      <div class="card">
+        <div class="card-h" data-en="⏱ TATKAL TIMER - TIME TO NEXT SLOT" data-hi="⏱ तत्काल टाइमर - अगले स्लॉट तक समय">⏱ TATKAL TIMER - TIME TO NEXT SLOT</div>
+        <div class="card-b">
+          <div class="timer-grid">
+            <div class="timer-box">
+              <div class="lbl" data-en="AC TATKAL (1A / 2A / 3A / 3E / CC)" data-hi="एसी तत्काल (1A / 2A / 3A / 3E / CC)">AC TATKAL (1A / 2A / 3A / 3E / CC)</div>
+              <div class="time" id="timerAC">--:--:--</div>
+              <div class="sub" data-en="Slot opens at 10:00 AM" data-hi="स्लॉट सुबह 10:00 बजे खुलता है">Slot opens at 10:00 AM</div>
+            </div>
+            <div class="timer-box">
+              <div class="lbl" data-en="SLEEPER / 2S TATKAL (SL / 2S)" data-hi="स्लीपर / 2S तत्काल (SL / 2S)">SLEEPER / 2S TATKAL (SL / 2S)</div>
+              <div class="time" id="timerSL">--:--:--</div>
+              <div class="sub" data-en="Slot opens at 11:00 AM" data-hi="स्लॉट सुबह 11:00 बजे खुलता है">Slot opens at 11:00 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="SEARCH TRAINS" data-hi="ट्रेनें खोजें">SEARCH TRAINS</div>
+        <div class="card-b">
+          <div class="note" id="stnChip" style="margin-bottom:8px" data-en="Loading station list..." data-hi="स्टेशन लिस्ट लोड हो रही है...">Loading station list...</div>
+          <div class="search-grid">
+            <div class="station-field">
+              <div class="cap" data-en="FROM" data-hi="कहाँ से">FROM <span style="color:var(--red)">*</span></div>
+              <input id="fromInput" placeholder="Ludhiana Junction (LDH)" autocomplete="off">
+              <div class="autocomplete" id="fromAc"></div>
+            </div>
+            <button class="swap-btn" onclick="swapStations()" title="Swap stations">⇅</button>
+            <div class="station-field">
+              <div class="cap" data-en="TO" data-hi="कहाँ तक">TO <span style="color:var(--red)">*</span></div>
+              <input id="toInput" placeholder="Prayagraj Junction (PRYJ)" autocomplete="off">
+              <div class="autocomplete" id="toAc"></div>
+            </div>
+            <div><div class="cap" data-en="DATE" data-hi="तारीख">DATE</div><input type="date" id="dateInput"></div>
+            <div><div class="cap" data-en="QUOTA" data-hi="कोटा">QUOTA</div>
+              <select id="quotaInput"><option>GENERAL</option><option selected>TATKAL</option><option>LADIES</option><option>SENIOR CITIZEN</option><option>LOWER BERTH</option></select></div>
+            <div><div class="cap" data-en="CLASS" data-hi="श्रेणी">CLASS</div>
+              <select id="classInput"><option value="ALL">All Classes</option><option value="1A">AC First (1A)</option><option value="2A">AC 2 Tier (2A)</option><option value="3A">AC 3 Tier (3A)</option><option value="3E">AC 3 Economy (3E)</option><option value="CC">AC Chair Car (CC)</option><option value="SL">Sleeper (SL)</option><option value="2S">Second Sitting (2S)</option></select></div>
+            <button class="btn-search" onclick="runSearch()" data-en="SEARCH TRAINS" data-hi="ट्रेनें खोजें">SEARCH TRAINS</button>
+          </div>
+          <div id="searchMsg" class="msg"></div>
+        </div>
+      </div>
+
+      <div id="resultsWrap">
+        <div class="empty-state" data-html="1" data-en="Choose <b>From / To / Date</b> above and press Search.<br>Then press <b>BOOK ON IRCTC</b> - the Tatkal Quick Kit copies your passengers in one click." data-hi="ऊपर <b>कहाँ से / कहाँ तक / तारीख</b> चुनें और सर्च दबाएं।<br>फिर <b>BOOK ON IRCTC</b> दबाएं - तत्काल क्विक किट एक क्लिक में पैसेंजर कॉपी कर देता है।">Choose <b>From / To / Date</b> above and press Search.<br>Then press <b>BOOK ON IRCTC</b> - the Tatkal Quick Kit copies your passengers in one click.</div>
+      </div>
+    </section>
+
+    <!-- PASSENGERS -->
+    <section id="view-quick" class="hidden">
+      <div class="card">
+        <div class="card-h" data-en="PASSENGER MASTER LIST - FILL ONCE, READY EVERY TIME" data-hi="पैसेंजर मास्टर लिस्ट - एक बार भरें, हर बार तैयार">PASSENGER MASTER LIST - FILL ONCE, READY EVERY TIME</div>
+        <div class="card-b">
+          <div class="note" style="margin-bottom:12px" data-html="1" data-en="Save all passengers <b>once</b> - they are stored on your portal account. While booking, press <b>Copy All</b> and paste straight into the IRCTC passenger form - the single biggest speed trick for tatkal." data-hi="सारे यात्री <b>एक बार</b> सेव करें - ये आपके पोर्टल अकाउंट पर सेव रहते हैं। बुकिंग के समय <b>Copy All</b> दबाकर सीधे IRCTC फॉर्म में पेस्ट करें - तत्काल की सबसे बड़ी स्पीड ट्रिक।">Save all passengers <b>once</b> - they are stored on your portal account. While booking, press <b>Copy All</b> and paste straight into the IRCTC passenger form - the single biggest speed trick for tatkal.</div>
+          <div class="form-row">
+            <div><div class="cap" data-en="NAME (as per ID)" data-hi="नाम (आईडी अनुसार)">NAME (as per ID)</div><input id="pfName" placeholder="e.g. VISHWAJEET KUMAR"></div>
+            <div><div class="cap" data-en="AGE" data-hi="उम्र">AGE</div><input id="pfAge" type="number" placeholder="29"></div>
+            <div><div class="cap" data-en="GENDER" data-hi="लिंग">GENDER</div><select id="pfGen"><option>Male</option><option>Female</option><option>Transgender</option></select></div>
+            <div><div class="cap" data-en="BERTH PREF" data-hi="बर्थ प्राथमिकता">BERTH PREF</div><select id="pfBerth"><option>No Preference</option><option>Lower</option><option>Middle</option><option>Upper</option><option>Side Lower</option><option>Side Upper</option><option>Window Side</option></select></div>
+            <div><div class="cap" data-en="FOOD" data-hi="खाना">FOOD</div><select id="pfFood"><option>No Food</option><option>Veg</option><option>Non Veg</option></select></div>
+            <button class="btn-search" style="height:38px" onclick="addPassenger()" data-en="+ ADD" data-hi="+ जोड़ें">+ ADD</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="plist" id="passTable">
+              <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Gender</th><th>Berth</th><th>Food</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+            <button class="btn-copyall" onclick="copyAllPassengers()" data-en="📋 COPY ALL (IRCTC FORMAT)" data-hi="📋 सब कॉपी करें (IRCTC फॉर्मेट)">📋 COPY ALL (IRCTC FORMAT)</button>
+          </div>
+          <textarea class="copy-area" id="copyArea" readonly placeholder="Press Copy All and the IRCTC-format text will appear here..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- AGENT -->
+    <section id="view-agent" class="hidden">
+      <div class="card">
+        <div class="card-h" data-en="AGENT / EMPLOYEE PANEL - OWNER VIEW" data-hi="एजेंट / कर्मचारी पैनल - मालिक व्यू">AGENT / EMPLOYEE PANEL - OWNER VIEW</div>
+        <div class="card-b">
+          <div class="stat-grid">
+            <div class="stat-box"><div class="v" id="stCustomers">0</div><div class="k" data-en="Registered Customers" data-hi="रजिस्टर्ड ग्राहक">Registered Customers</div></div>
+            <div class="stat-box"><div class="v" id="stVerified">0</div><div class="k" data-en="OTP Verified Customers" data-hi="OTP सत्यापित ग्राहक">OTP Verified Customers</div></div>
+            <div class="stat-box"><div class="v" id="stPassengers">0</div><div class="k" data-en="Total Saved Passengers" data-hi="कुल सेव किए यात्री">Total Saved Passengers</div></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="plist" id="custTable">
+              <thead><tr><th>#</th><th>Name</th><th>User Name</th><th>Mobile</th><th>Email</th><th data-en="OTP Verified" data-hi="OTP सत्यापित">OTP Verified</th><th>Passengers</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <b>Vishwajeet Parmar Rajput Train Ticket</b> &bull; Owner: Vishwajeet Parmar Rajput &bull; +91 9530646737 &bull; vishwajeetpar666@gmail.com<br>
+    <span data-en="Customer portal for tatkal preparation. Actual booking and payment happen only on the official IRCTC website/app." data-hi="तत्काल की तैयारी का ग्राहक पोर्टल। असली बुकिंग और भुगतान केवल आधिकारिक IRCTC वेबसाइट/ऐप पर होते हैं।">Customer portal for tatkal preparation. Actual booking and payment happen only on the official IRCTC website/app.</span>
+  </footer>
+</div>
+
+<!-- ============ TATKAL QUICK KIT MODAL ============ -->
+<div class="modal-overlay" id="kitModal">
+  <div class="modal">
+    <div class="modal-h"><span class="t" data-en="Tatkal Quick Kit" data-hi="तत्काल क्विक किट">Tatkal Quick Kit</span>
+      <button class="x" onclick="closeKit()">&times;</button></div>
+    <div class="modal-b" id="kitBody"></div>
+    <div class="modal-f" id="kitFoot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   STATIC PREVIEW SHIM - isse portal bina server ke chalta hai.
+   Saara data sirf is browser mein (localStorage) save hota hai.
+   Asli OTP (SMS/email) ke liye server version (Render) chahiye.
+   ========================================================= */
+(function () {
+  var LS = window.localStorage;
+  function load(k, d) { try { var v = LS.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function save(k, v) { try { LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function pub(u) { return { id: u.id, role: u.role, name: u.name, username: u.username, email: u.email, mobile: u.mobile, verified: u.verified }; }
+  function jsonResp(body, status) {
+    return Promise.resolve(new Response(JSON.stringify(body), { status: status || 200, headers: { 'Content-Type': 'application/json' } }));
+  }
+
+  var TRAINS = [
+    { no: '20434', name: 'JAMMU MAIL', from: 'LDH', to: 'SFG', dep: '22:35', arr: '12:35', days: [0,1,2,3,4,5,6], classes: ['1A','2A','3A','SL'], fares: { SL: 520, '3A': 1400, '2A': 2030, '1A': 3350 }, dist: 1045, note: 'Daily' },
+    { no: '22432', name: 'SFG MCTM SF EXP', from: 'LDH', to: 'PRYJ', dep: '21:25', arr: '12:55', days: [0,3], classes: ['2A','3A','SL'], fares: { SL: 560, '3A': 1480, '2A': 2140 }, dist: 1035, note: 'Sun & Wed' },
+    { no: '18102', name: 'JAT TATA EXPRESS', from: 'LDH', to: 'PRYJ', dep: '23:10', arr: '17:10', days: [1,3,6], classes: ['2A','3A','3E','SL'], fares: { SL: 480, '3E': 1150, '3A': 1295, '2A': 1935 }, dist: 1007, note: 'Mon, Wed & Sat' },
+    { no: '18310', name: 'JAT SBP EXPRESS', from: 'LDH', to: 'PRYJ', dep: '23:10', arr: '17:10', days: [0,2,4,5], classes: ['2A','3A','SL','2S'], fares: { SL: 480, '3A': 1295, '2A': 1935, '2S': 180 }, dist: 1007, note: 'Sun, Tue, Thu & Fri' },
+    { no: '18101', name: 'TATA JAT EXPRESS', from: 'PRYJ', to: 'LDH', dep: '09:50', arr: '05:06', days: [1,4,6], classes: ['2A','3A','3E','SL'], fares: { SL: 480, '3E': 1150, '3A': 1295, '2A': 1935 }, dist: 1007, note: 'Indicative' },
+    { no: '18309', name: 'SBP JAT EXPRESS', from: 'PRYJ', to: 'LDH', dep: '09:50', arr: '05:06', days: [0,2,3,5], classes: ['2A','3A','SL','2S'], fares: { SL: 480, '3A': 1295, '2A': 1935, '2S': 180 }, dist: 1007, note: 'Indicative' },
+    { no: '20433', name: 'JAMMU MAIL', from: 'SFG', to: 'LDH', dep: '16:05', arr: '05:35', days: [0,1,2,3,4,5,6], classes: ['1A','2A','3A','SL'], fares: { SL: 520, '3A': 1400, '2A': 2030, '1A': 3350 }, dist: 1045, note: 'Indicative' }
+  ];
+
+  /* seed owner/agent account */
+  (function () {
+    var users = load('vpr_users', {});
+    if (!users['__agent__']) {
+      users['__agent__'] = {
+        id: 'agent-1', role: 'agent', name: 'Vishwajeet Parmar Rajput (Owner)',
+        username: 'vishwajeet', email: 'vishwajeetpar666@gmail.com', mobile: '9530646737',
+        pass: 'Vish@666', verified: true, created: new Date().toISOString()
+      };
+      save('vpr_users', users);
+    }
+  })();
+
+  function findUser(idf) {
+    var users = load('vpr_users', {});
+    idf = String(idf || '').trim().toLowerCase();
+    for (var k in users) {
+      if (!users.hasOwnProperty(k)) continue;
+      var u = users[k];
+      if (k === idf || u.username === idf || u.email === idf || u.mobile === idf) return u;
+    }
+    return null;
+  }
+
+  var origFetch = window.fetch ? window.fetch.bind(window) : null;
+  window.fetch = function (url, opts) {
+    url = String(url);
+    var i = url.indexOf('/api/');
+    if (i < 0) return origFetch ? origFetch(url, opts) : Promise.reject(new Error('no fetch'));
+    var path = url.slice(i).split('?')[0];
+    var query = url.indexOf('?') >= 0 ? url.slice(url.indexOf('?') + 1) : '';
+    var method = ((opts && opts.method) || 'GET').toUpperCase();
+    var body = {};
+    try { body = opts && opts.body ? JSON.parse(opts.body) : {}; } catch (e) {}
+    var session = load('vpr_session', null);
+
+    if (path === '/api/config') return jsonResp({ smsConfigured: false, emailConfigured: false, otpDevMode: true, preview: true });
+
+    if (path === '/api/me') {
+      if (!session) return jsonResp({ error: 'Not logged in.' }, 401);
+      var me = findUser(session.id);
+      if (!me) return jsonResp({ error: 'Not logged in.' }, 401);
+      return jsonResp({ user: pub(me) });
+    }
+
+    if (path === '/api/register' && method === 'POST') {
+      var name = String(body.name || '').trim(), un = String(body.username || '').trim().toLowerCase();
+      var mob = String(body.mobile || '').trim(), em = String(body.email || '').trim().toLowerCase(), pw = String(body.password || '');
+      if (!name || name.length < 2) return jsonResp({ error: 'Please enter your full name.' }, 400);
+      if (!/^[a-z0-9_]{3,20}$/.test(un)) return jsonResp({ error: 'User name must be 3-20 characters (a-z, 0-9, _ only).' }, 400);
+      if (!/^\d{10}$/.test(mob)) return jsonResp({ error: 'Mobile number must be exactly 10 digits.' }, 400);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return jsonResp({ error: 'Please enter a valid email address.' }, 400);
+      if (!pw || pw.length < 6) return jsonResp({ error: 'Password must be at least 6 characters.' }, 400);
+      var users = load('vpr_users', {});
+      if (users[un]) return jsonResp({ error: 'This user name is already taken.' }, 409);
+      for (var k in users) {
+        if (!users.hasOwnProperty(k)) continue;
+        if (users[k].mobile === mob) return jsonResp({ error: 'This mobile number is already registered.' }, 409);
+        if (users[k].email === em) return jsonResp({ error: 'This email is already registered.' }, 409);
+      }
+      var nu = { id: uid(), role: 'customer', name: name, username: un, email: em, mobile: mob, pass: pw, verified: false, created: new Date().toISOString() };
+      users[un] = nu; save('vpr_users', users);
+      var code = String(100000 + Math.floor(Math.random() * 900000));
+      var otps = load('vpr_otps', {});
+      otps[nu.id] = { code: code, expires: Date.now() + 600000, tries: 0, lastSent: Date.now() };
+      save('vpr_otps', otps);
+      return jsonResp({ ok: true, message: 'OTP sent to your mobile and email. It is valid for 10 minutes.', devCode: code });
+    }
+
+    if (path === '/api/resend-otp' && method === 'POST') {
+      var ru = findUser(body.username);
+      if (!ru) return jsonResp({ error: 'Account not found.' }, 404);
+      var otps2 = load('vpr_otps', {});
+      var rec0 = otps2[ru.id];
+      if (rec0 && rec0.lastSent && (Date.now() - rec0.lastSent) < 60000) {
+        var w = Math.ceil((60000 - (Date.now() - rec0.lastSent)) / 1000);
+        return jsonResp({ error: 'Please wait ' + w + ' seconds before requesting a new OTP.' }, 429);
+      }
+      var code2 = String(100000 + Math.floor(Math.random() * 900000));
+      otps2[ru.id] = { code: code2, expires: Date.now() + 600000, tries: 0, lastSent: Date.now() };
+      save('vpr_otps', otps2);
+      return jsonResp({ ok: true, message: 'New OTP sent.', devCode: code2 });
+    }
+
+    if (path === '/api/verify-otp' && method === 'POST') {
+      var vu = findUser(body.username);
+      if (!vu) return jsonResp({ error: 'Account not found.' }, 404);
+      var otps3 = load('vpr_otps', {});
+      var rec = otps3[vu.id];
+      if (!rec) return jsonResp({ error: 'No OTP was requested. Please register again.' }, 400);
+      if (Date.now() > rec.expires) return jsonResp({ error: 'OTP expired. Please request a new one.' }, 400);
+      if (rec.tries >= 5) return jsonResp({ error: 'Too many wrong attempts. Please request a new OTP.' }, 429);
+      if (String(body.otp || '').trim() !== String(rec.code)) {
+        rec.tries = (rec.tries || 0) + 1; otps3[vu.id] = rec; save('vpr_otps', otps3);
+        return jsonResp({ error: 'Wrong OTP. Attempts left: ' + (5 - rec.tries) }, 400);
+      }
+      var users2 = load('vpr_users', {});
+      var key = vu.username; if (users2[key]) { users2[key].verified = true; save('vpr_users', users2); }
+      delete otps3[vu.id]; save('vpr_otps', otps3);
+      save('vpr_session', { id: vu.id, username: vu.username, role: vu.role, name: vu.name });
+      vu.verified = true;
+      return jsonResp({ ok: true, message: 'Mobile and email verified successfully! You are logged in.', user: pub(vu) });
+    }
+
+    if (path === '/api/login' && method === 'POST') {
+      var lu = findUser(body.username);
+      if (!lu || lu.pass !== String(body.password || '')) {
+        return jsonResp({ error: 'Wrong user name / email / mobile or password.' }, 401);
+      }
+      if (!lu.verified) {
+        return jsonResp({ error: 'Your account is not verified yet. Please verify with OTP first.', needVerify: true, username: lu.username }, 403);
+      }
+      save('vpr_session', { id: lu.id, username: lu.username, role: lu.role, name: lu.name });
+      return jsonResp({ ok: true, user: pub(lu) });
+    }
+
+    if (path === '/api/logout') { try { LS.removeItem('vpr_session'); } catch (e) {} return jsonResp({ ok: true }); }
+
+    if (path === '/api/passengers') {
+      var all = load('vpr_passengers', []);
+      if (method === 'GET') {
+        if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+        return jsonResp({ passengers: all.filter(function (p) { return p.userId === session.id; }) });
+      }
+      if (method === 'POST') {
+        if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+        var pn = String(body.name || '').trim(), pa = parseInt(body.age, 10);
+        if (!pn || pn.length < 2) return jsonResp({ error: 'Please enter the passenger name (as per ID).' }, 400);
+        if (!pa || pa < 1 || pa > 120) return jsonResp({ error: 'Please enter a valid age (1-120).' }, 400);
+        var np = { id: uid(), userId: session.id, name: pn.toUpperCase(), age: pa, gender: body.gender || 'Male', berth: body.berth || 'No Preference', food: body.food || 'No Food' };
+        all.push(np); save('vpr_passengers', all);
+        return jsonResp({ ok: true, passenger: np });
+      }
+    }
+
+    if (path.indexOf('/api/passengers/') === 0 && method === 'DELETE') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var pid = path.split('/').pop();
+      var list = load('vpr_passengers', []);
+      var before = list.length;
+      list = list.filter(function (p) { return !(p.id === pid && p.userId === session.id); });
+      save('vpr_passengers', list);
+      return jsonResp({ ok: true, deleted: before !== list.length });
+    }
+
+    if (path === '/api/trains') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var params = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); params[a[0]] = decodeURIComponent(a[1] || ''); });
+      var from = String(params.from || '').toUpperCase(), to = String(params.to || '').toUpperCase();
+      if (!from || !to) return jsonResp({ error: 'Please select From/To stations from the list.' }, 400);
+      if (from === to) return jsonResp({ error: 'From and To cannot be the same station.' }, 400);
+      var tr = TRAINS.filter(function (t) { return t.from === from && t.to === to; });
+      return jsonResp({ trains: tr, demo: true, note: 'Demo timetable for Ludhiana-Prayagraj route. For live all-India trains and booking, use the official IRCTC website/app.', irctcSearchUrl: 'https://www.irctc.co.in/nget/train-search' });
+    }
+
+    if (path === '/api/agent/customers') {
+      if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
+      var usersA = load('vpr_users', {});
+      var pass = load('vpr_passengers', []);
+      var customers = [];
+      for (var kk in usersA) {
+        if (!usersA.hasOwnProperty(kk)) continue;
+        var uu = usersA[kk];
+        if (uu.role === 'agent') continue;
+        customers.push({ name: uu.name, username: uu.username, mobile: uu.mobile, email: uu.email, verified: uu.verified, passengers: pass.filter(function (p) { return p.userId === uu.id; }).length, created: uu.created });
+      }
+      return jsonResp({ customers: customers, stats: { total: customers.length, verified: customers.filter(function (c) { return c.verified; }).length, passengers: pass.length } });
+    }
+
+    return jsonResp({ error: 'Not found.' }, 404);
+  };
+
+  /* preview banner */
+  window.addEventListener('DOMContentLoaded', function () {
+    try {
+      var b = document.createElement('div');
+      b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#122353;color:#ffce7a;' +
+        'font:600 11.5px/1.5 Segoe UI,Arial,sans-serif;text-align:center;padding:7px 12px';
+      b.innerHTML = 'PREVIEW MODE &bull; data is saved only in this browser &bull; register/OTP works in preview (OTP shown on screen) &bull; real SMS/email OTP needs the server version';
+      document.body.appendChild(b);
+      document.body.style.paddingBottom = '34px';
+    } catch (e) {}
+  });
+})();
+
+</script>
+<script>
+/* ================= helpers ================= */
+var LANG = localStorage.getItem('vpr_lang') || 'en';
+function applyLang(){
+  var els = document.querySelectorAll('[data-en]');
+  for (var i = 0; i < els.length; i++) {
+    var v = (LANG === 'hi' && els[i].getAttribute('data-hi')) ? els[i].getAttribute('data-hi') : els[i].getAttribute('data-en');
+    if (v === null || v === '') continue;
+    if (els[i].getAttribute('data-html') === '1') els[i].innerHTML = v; else els[i].textContent = v;
+  }
+}
+function toggleLang(){ LANG = (LANG === 'hi' ? 'en' : 'hi'); localStorage.setItem('vpr_lang', LANG); applyLang(); toast(LANG === 'hi' ? 'भाषा हिंदी हो गई' : 'Language set to English'); }
+function toast(t){ var el = document.getElementById('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 3000); }
+function showMsg(id, txt, ok){ var el = document.getElementById(id); el.textContent = txt; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+async function api(url, opts) {
+  var r = await fetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' }, opts || {}));
+  var data = {};
+  try { data = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(data.error || ('Request failed (' + r.status + ')'));
+  return data;
+}
+
+/* ================= tabs / login screen ================= */
+function switchTab(t) {
+  ['paneLogin', 'paneReg', 'paneAgent'].forEach(function (id) { document.getElementById(id).classList.add('hidden'); });
+  document.getElementById(t === 'login' ? 'paneLogin' : t === 'reg' ? 'paneReg' : 'paneAgent').classList.remove('hidden');
+  document.getElementById('tabLogin').classList.toggle('active', t === 'login');
+  document.getElementById('tabReg').classList.toggle('active', t === 'reg');
+  document.getElementById('tabAgent').classList.toggle('active', t === 'agent');
+  ['liMsg', 'rgMsg', 'agMsg'].forEach(function (id) { var el = document.getElementById(id); el.textContent = ''; el.className = 'msg'; });
+}
+var CONFIG = { otpDevMode: true };
+var regUsername = '';
+
+async function doRegister() {
+  var name = document.getElementById('rgName').value.trim();
+  var un = document.getElementById('rgUser').value.trim().toLowerCase();
+  var mob = document.getElementById('rgMob').value.trim();
+  var em = document.getElementById('rgEmail').value.trim();
+  var pw = document.getElementById('rgPass').value;
+  var btn = document.getElementById('btnReg'); btn.disabled = true;
+  try {
+    var r = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, username: un, mobile: mob, email: em, password: pw }) });
+    regUsername = un;
+    document.getElementById('regStep1').classList.add('hidden');
+    document.getElementById('regStep2').classList.remove('hidden');
+    var box = document.getElementById('devOtpBox');
+    if (r.devCode) {
+      box.style.display = 'block';
+      box.innerHTML = (LANG === 'hi'
+        ? '<b>DEV MODE:</b> SMS/ईमेल सर्वर कॉन्फ़िगर नहीं है, इसलिए OTP स्क्रीन पर दिख रहा है (सिर्फ टेस्टिंग के लिए)। OTP: <b>' + r.devCode + '</b>'
+        : '<b>DEV MODE:</b> No SMS/email server configured yet, so the OTP is shown on screen (for testing only). OTP: <b>' + r.devCode + '</b>');
+    } else { box.style.display = 'none'; }
+    showMsg('rgMsg', r.message, true);
+    document.getElementById('otpInput').focus();
+  } catch (e) { showMsg('rgMsg', e.message, false); }
+  btn.disabled = false;
+}
+async function doResendOtp() {
+  try {
+    var r = await api('/api/resend-otp', { method: 'POST', body: JSON.stringify({ username: regUsername }) });
+    var box = document.getElementById('devOtpBox');
+    if (r.devCode) {
+      box.style.display = 'block';
+      box.innerHTML = (LANG === 'hi' ? 'नया OTP (DEV MODE): <b>' + r.devCode + '</b>' : 'New OTP (DEV MODE): <b>' + r.devCode + '</b>');
+    }
+    showMsg('rgMsg', r.message, true);
+  } catch (e) { showMsg('rgMsg', e.message, false); }
+}
+async function doVerifyOtp() {
+  var code = document.getElementById('otpInput').value.trim();
+  if (!/^\d{6}$/.test(code)) { showMsg('rgMsg', LANG === 'hi' ? '6 अंकों का OTP डालें।' : 'Please enter the 6-digit OTP.', false); return; }
+  try {
+    var r = await api('/api/verify-otp', { method: 'POST', body: JSON.stringify({ username: regUsername, otp: code }) });
+    showMsg('rgMsg', r.message, true);
+    setTimeout(function () { enterApp(r.user); }, 600);
+  } catch (e) { showMsg('rgMsg', e.message, false); }
+}
+async function doLogin() {
+  var un = document.getElementById('liUser').value.trim().toLowerCase();
+  var pw = document.getElementById('liPass').value;
+  if (!un || !pw) { showMsg('liMsg', LANG === 'hi' ? 'दोनों फ़ील्ड भरें।' : 'Please fill both fields.', false); return; }
+  try {
+    var r = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: un, password: pw }) });
+    enterApp(r.user);
+  } catch (e) {
+    showMsg('liMsg', e.message, false);
+    if (e.message.indexOf('verify') >= 0) {
+      regUsername = un;
+      switchTab('reg');
+      document.getElementById('regStep1').classList.add('hidden');
+      document.getElementById('regStep2').classList.remove('hidden');
+      document.getElementById('devOtpBox').style.display = 'none';
+    }
+  }
+}
+async function doAgentLogin() {
+  var id = document.getElementById('agId').value.trim().toLowerCase();
+  var pw = document.getElementById('agPass').value;
+  if (!id || !pw) { showMsg('agMsg', LANG === 'hi' ? 'दोनों फ़ील्ड भरें।' : 'Please fill both fields.', false); return; }
+  try {
+    var r = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: id, password: pw }) });
+    if (r.user.role !== 'agent') { showMsg('agMsg', LANG === 'hi' ? 'यह एजेंट अकाउंट नहीं है।' : 'This is not an agent account.', false); return; }
+    enterApp(r.user);
+  } catch (e) { showMsg('agMsg', e.message, false); }
+}
+async function doLogout() {
+  try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
+  location.reload();
+}
+
+/* ================= app ================= */
+var ME = null;
+function enterApp(user) {
+  ME = user;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('welcomeUser').innerHTML =
+    (LANG === 'hi' ? 'नमस्ते ' : 'Welcome ') + user.name +
+    (user.verified ? ' <span class="verified">✔ ' + (LANG === 'hi' ? 'OTP सत्यापित' : 'OTP verified') + '</span>' : '') +
+    ' (' + (user.role === 'agent' ? (LANG === 'hi' ? 'एजेंट' : 'AGENT') : user.username) + ')';
+  var isAgent = user.role === 'agent';
+  document.getElementById('nv-agent').classList.toggle('hidden', !isAgent);
+  loadPassengers();
+  prefillDefaults();
+  if (isAgent) loadAgent();
+  showView('trains');
+}
+function showView(v) {
+  ['trains', 'quick', 'agent'].forEach(function (x) {
+    var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
+    var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ================= stations + search ================= */
+var STATIONS = [];
+fetch('./stations.json').then(function (r) { return r.json(); }).then(function (list) {
+  STATIONS = list;
+  var chip = document.getElementById('stnChip');
+  chip.textContent = (LANG === 'hi' ? 'स्टेशन डेटा: पूरे भारत के ' : 'STATION DATA: ') + STATIONS.length + (LANG === 'hi' ? ' स्टेशन' : ' stations across India');
+});
+function attachAutocomplete(inputId, acId) {
+  var input = document.getElementById(inputId), ac = document.getElementById(acId);
+  input.addEventListener('input', function () {
+    var q = input.value.trim().toLowerCase();
+    if (q.length < 2) { ac.style.display = 'none'; return; }
+    var hits = STATIONS.filter(function (s) {
+      return s[0].toLowerCase().indexOf(q) >= 0 || s[1].toLowerCase().indexOf(q) === 0 ||
+        (s[2] && s[2].toLowerCase().indexOf(q) >= 0);
+    }).slice(0, 20);
+    if (!hits.length) { ac.style.display = 'none'; return; }
+    ac.innerHTML = hits.map(function (s) {
+      return '<div onclick="pickStation(\'' + inputId + '\',\'' + acId + '\',\'' + s[1] + '\')"><span>' + s[0] + ' (' + s[1] + ')</span><span class="code">' + (s[2] ? s[2] : '') + '</span></div>';
+    }).join('');
+    ac.style.display = 'block';
+  });
+  input.addEventListener('blur', function () { setTimeout(function () { ac.style.display = 'none'; }, 180); });
+}
+attachAutocomplete('fromInput', 'fromAc');
+attachAutocomplete('toInput', 'toAc');
+function pickStation(inputId, acId, code) {
+  var st = STATIONS.filter(function (s) { return s[1] === code; })[0];
+  document.getElementById(inputId).value = st[0] + ' (' + st[1] + ')';
+  document.getElementById(acId).style.display = 'none';
+}
+function swapStations() {
+  var a = document.getElementById('fromInput').value;
+  document.getElementById('fromInput').value = document.getElementById('toInput').value;
+  document.getElementById('toInput').value = a;
+}
+function prefillDefaults() {
+  if (!document.getElementById('fromInput').value) document.getElementById('fromInput').value = 'LUDHIANA JUNCTION (LDH)';
+  if (!document.getElementById('toInput').value) document.getElementById('toInput').value = 'PRAYAGRAJ JUNCTION (PRYJ)';
+  var d = document.getElementById('dateInput');
+  if (!d.value) { var t = new Date(); t.setDate(t.getDate() + 1); d.value = t.toISOString().slice(0, 10); }
+  var today = new Date(), max = new Date(); max.setDate(max.getDate() + 60);
+  d.min = today.toISOString().slice(0, 10); d.max = max.toISOString().slice(0, 10);
+}
+function codeOf(inpId) {
+  var v = document.getElementById(inpId).value, m = v.match(/\(([A-Z]{1,10})\)$/);
+  return m ? m[1] : null;
+}
+var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+var currentSearch = null;
+async function runSearch() {
+  var from = codeOf('fromInput'), to = codeOf('toInput');
+  if (!from || !to) { showMsg('searchMsg', LANG === 'hi' ? 'स्टेशन लिस्ट से चुनें (नाम लिखकर सुझाव पर क्लिक करें)।' : 'Please select From/To stations from the suggestion list.', false); return; }
+  showMsg('searchMsg', '');
+  try {
+    var r = await api('/api/trains?from=' + from + '&to=' + to);
+    currentSearch = { from: from, to: to, date: document.getElementById('dateInput').value, quota: document.getElementById('quotaInput').value, irctcUrl: r.irctcSearchUrl };
+    renderResults(r.trains);
+  } catch (e) { showMsg('searchMsg', e.message, false); }
+}
+function renderResults(trains) {
+  var wrap = document.getElementById('resultsWrap');
+  var s = currentSearch;
+  var head = '<div class="results-head"><span class="cnt">' + trains.length + (LANG === 'hi' ? ' परिणाम' : ' Results') + ': ' + s.from + ' &rarr; ' + s.to + ' | ' + fmtDate(new Date(s.date)) + '</span>' +
+    '<a class="btn-book" style="margin-left:auto" target="_blank" href="' + s.irctcUrl + '">' + (LANG === 'hi' ? 'LIVE SEARCH IRCTC पर →' : 'LIVE SEARCH ON IRCTC →') + '</a></div>';
+  if (!trains.length) {
+    wrap.innerHTML = head + '<div class="card"><div class="empty-state">' +
+      (LANG === 'hi'
+        ? 'इस रूट के लिए अभी डेमो ट्रेनें नहीं हैं। सारी लाइव ट्रेनें IRCTC पर देखें - ऊपर वाला बटन दबाएं।<br>मतलब: लाइव पूरी भारत की ट्रेन डेटा के लिए अधिकृत रेलवे API पार्टनर चाहिए।'
+        : 'No demo trains loaded for this route yet. See all live trains on IRCTC with the button above.<br>(Live all-India train data needs an authorised railway API partner.)') +
+      '</div></div>';
+    return;
+  }
+  wrap.innerHTML = head + trains.map(function (t, i) { return trainCard(t, i); }).join('');
+}
+function trainCard(t, idx) {
+  var cls = t.classes[0];
+  var fare = t.fares[cls] || '';
+  var tabs = t.classes.map(function (c, i) {
+    return '<button class="' + (i === 0 ? 'active' : '') + '" onclick="pickCls(this,\'' + c + '\',' + idx + ')">' + c + '</button>';
+  }).join('');
+  return '<div class="train-card">' +
+    '<div class="tc-head"><div><span class="tname">' + t.name + '</span> <span class="tno">(' + t.no + ')</span></div><span class="note">' + t.note + '</span></div>' +
+    '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn">' + t.from + '</div></div>' +
+    '<div class="dur">' + t.dist + ' km</div>' +
+    '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
+    '<div class="cls-tabs">' + tabs + '</div>' +
+    '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (संकेतात्मक)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">₹ ' + fare + ' /' + cls + '</span></div>' +
+    '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK ON IRCTC →' : 'BOOK ON IRCTC →') + '</button></div></div>';
+}
+function pickCls(btn, c, idx) {
+  var card = btn.closest('.train-card');
+  card.querySelectorAll('.cls-tabs button').forEach(function (b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  var fareEl = document.getElementById('fare' + idx);
+  if (fareEl) fareEl.textContent = '₹ ... /' + c;
+}
+
+/* ================= Tatkal Quick Kit ================= */
+var kitTrain = null;
+async function openKit(idx) {
+  var r = await api('/api/trains?from=' + currentSearch.from + '&to=' + currentSearch.to);
+  kitTrain = r.trains[idx];
+  if (!kitTrain) return;
+  var pax = await api('/api/passengers');
+  var activeCls = document.querySelector('#resultsWrap .train-card:nth-child(' + (idx + 1) + ') .cls-tabs button.active');
+  var cls = activeCls ? activeCls.textContent : kitTrain.classes[0];
+  var rows = pax.passengers.length ? pax.passengers.map(function (p, i) {
+    return '<div class="pax-row"><input type="checkbox" checked data-name="' + p.name + '" data-age="' + p.age + '" data-gen="' + p.gender + '" data-berth="' + p.berth + '" data-food="' + p.food + '">' +
+      '<b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + '</span></div>';
+  }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'मास्टर लिस्ट खाली है - पहले PASSENGER MASTER LIST में यात्री जोड़ें।' : 'Your master list is empty - add passengers first in PASSENGER MASTER LIST.') + '</div>';
+  document.getElementById('kitBody').innerHTML =
+    '<div class="warn-box">' + (LANG === 'hi'
+      ? '<b>तत्काल क्विक किट:</b> नीचे यात्री चुनें → <b>COPY</b> दबाएं → IRCTC के पैसेंजर फॉर्म में पेस्ट करें → फिर नीचे IRCTC खोलें। यही सबसे तेज़ कानूनी तरीका है।'
+      : '<b>Tatkal Quick Kit:</b> Select passengers below → press <b>COPY</b> → paste into the IRCTC passenger form → then open IRCTC below. This is the fastest legal way.') + '</div>' +
+    '<b>' + kitTrain.name + ' (' + kitTrain.no + ') | ' + currentSearch.from + ' → ' + currentSearch.to + ' | ' + currentSearch.quota + ' | ' + (LANG === 'hi' ? 'श्रेणी' : 'Class') + ': ' + cls + ' | ' + fmtDate(new Date(currentSearch.date)) + '</b>' +
+    '<div style="margin:12px 0">' + rows + '</div>' +
+    '<div id="kitCopyBox"></div>';
+  document.getElementById('kitFoot').innerHTML =
+    '<button class="btn-grey" onclick="closeKit()">' + (LANG === 'hi' ? 'बंद करें' : 'Close') + '</button>' +
+    '<button class="btn-grey" onclick="kitCopy()">' + (LANG === 'hi' ? '📋 COPY पैसेंजर' : '📋 COPY PASSENGERS') + '</button>' +
+    '<a class="btn-book" target="_blank" href="https://www.irctc.co.in/nget/booking/train-list" onclick="toast(\'' + (LANG === 'hi' ? 'IRCTC नई टैब में खुला' : 'IRCTC opened in new tab') + '\')">' + (LANG === 'hi' ? 'IRCTC खोलें →' : 'OPEN IRCTC →') + '</a>';
+  document.getElementById('kitModal').classList.add('open');
+}
+function kitCopy() {
+  var boxes = document.querySelectorAll('#kitBody .pax-row input:checked');
+  if (!boxes.length) { toast(LANG === 'hi' ? 'कम से कम एक यात्री चुनें' : 'Select at least one passenger'); return; }
+  var txt = [];
+  boxes.forEach(function (b) {
+    var g = b.getAttribute('data-gen') === 'Male' ? 'M' : b.getAttribute('data-gen') === 'Female' ? 'F' : 'T';
+    txt.push(b.getAttribute('data-name') + ' | ' + b.getAttribute('data-age') + ' | ' + g + ' | India | ' + b.getAttribute('data-berth') + ' | ' + b.getAttribute('data-food'));
+  });
+  var out = txt.join('\n');
+  var box = document.getElementById('kitCopyBox');
+  if (box) box.innerHTML = '<textarea class="copy-area">' + out + '</textarea>';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out).then(function () { toast(LANG === 'hi' ? 'कॉपी हो गया! IRCTC फॉर्म में पेस्ट करें' : 'Copied! Paste into the IRCTC form'); },
+      function () { toast(LANG === 'hi' ? 'नीचे बॉक्स से कॉपी करें' : 'Copy from the box below'); });
+  } else toast(LANG === 'hi' ? 'नीचे बॉक्स से कॉपी करें' : 'Copy from the box below');
+}
+function closeKit() { document.getElementById('kitModal').classList.remove('open'); }
+
+/* ================= passengers ================= */
+async function loadPassengers() {
+  try {
+    var r = await api('/api/passengers');
+    renderPassengers(r.passengers);
+  } catch (e) {}
+}
+function renderPassengers(list) {
+  var tb = document.querySelector('#passTable tbody');
+  tb.innerHTML = list.length ? list.map(function (p, i) {
+    return '<tr><td>' + (i + 1) + '</td><td><b>' + p.name + '</b></td><td>' + p.age + '</td><td>' + p.gender + '</td><td>' + p.berth + '</td><td>' + p.food +
+      '</td><td><button class="btn-sm red" onclick="delPassenger(\'' + p.id + '\')">' + (LANG === 'hi' ? 'हटाएं' : 'Delete') + '</button></td></tr>';
+  }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई यात्री सेव नहीं है। ऊपर फॉर्म से जोड़ें।' : 'No passengers saved yet. Add them with the form above.') + '</td></tr>';
+}
+async function addPassenger() {
+  var n = document.getElementById('pfName').value.trim();
+  var a = +document.getElementById('pfAge').value;
+  if (!n || !a) { toast(LANG === 'hi' ? 'नाम और उम्र भरें' : 'Please fill name and age'); return; }
+  try {
+    await api('/api/passengers', { method: 'POST', body: JSON.stringify({
+      name: n, age: a, gender: document.getElementById('pfGen').value,
+      berth: document.getElementById('pfBerth').value, food: document.getElementById('pfFood').value }) });
+    document.getElementById('pfName').value = ''; document.getElementById('pfAge').value = '';
+    loadPassengers();
+    toast(LANG === 'hi' ? 'यात्री सेव हो गया' : 'Passenger saved');
+  } catch (e) { toast(e.message); }
+}
+async function delPassenger(id) {
+  try { await api('/api/passengers/' + id, { method: 'DELETE' }); loadPassengers(); } catch (e) { toast(e.message); }
+}
+function copyAllPassengers() {
+  var rows = document.querySelectorAll('#passTable tbody tr');
+  if (!rows.length || !rows[0].querySelector('.btn-sm')) { toast(LANG === 'hi' ? 'पहले यात्री जोड़ें' : 'Please add passengers first'); return; }
+  var txt = [];
+  document.querySelectorAll('#passTable tbody tr').forEach(function (tr) {
+    var b = tr.querySelector('b'); if (!b) return;
+    var tds = tr.querySelectorAll('td');
+    var g = tds[3].textContent === 'Male' ? 'M' : tds[3].textContent === 'Female' ? 'F' : 'T';
+    txt.push(b.textContent + ' | ' + tds[2].textContent + ' | ' + g + ' | India | ' + tds[4].textContent + ' | ' + tds[5].textContent);
+  });
+  var out = txt.join('\n');
+  document.getElementById('copyArea').value = out;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out).then(function () { toast(LANG === 'hi' ? 'सब कॉपी हो गया!' : 'All passengers copied!'); },
+      function () { toast(LANG === 'hi' ? 'नीचे बॉक्स से कॉपी करें' : 'Copy from the box below'); });
+  }
+}
+
+/* ================= agent ================= */
+async function loadAgent() {
+  try {
+    var r = await api('/api/agent/customers');
+    document.getElementById('stCustomers').textContent = r.stats.total;
+    document.getElementById('stVerified').textContent = r.stats.verified;
+    document.getElementById('stPassengers').textContent = r.stats.passengers;
+    var tb = document.querySelector('#custTable tbody');
+    tb.innerHTML = r.customers.length ? r.customers.map(function (c, i) {
+      return '<tr><td>' + (i + 1) + '</td><td><b>' + c.name + '</b></td><td>' + c.username + '</td><td>' + c.mobile + '</td><td>' + c.email +
+        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + c.passengers + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई ग्राहक नहीं।' : 'No customers registered yet.') + '</td></tr>';
+  } catch (e) {}
+}
+
+/* ================= clock + timer ================= */
+function tickClock() {
+  var d = new Date();
+  document.getElementById('liveClock').textContent =
+    d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' [' + d.toLocaleTimeString('en-IN') + ']';
+  var now = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+  function until(target) {
+    var s = target - now; if (s < 0) s += 86400;
+    return String(Math.floor(s / 3600)).padStart(2, '0') + ':' + String(Math.floor((s % 3600) / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+  document.getElementById('timerAC').textContent = until(36000);
+  document.getElementById('timerSL').textContent = until(39600);
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* enter key handlers */
+document.getElementById('liPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+document.getElementById('otpInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') doVerifyOtp(); });
+document.getElementById('agPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') doAgentLogin(); });
+
+/* ================= init ================= */
+applyLang();
+api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
+api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
+</script>
+</body>
+</html>
