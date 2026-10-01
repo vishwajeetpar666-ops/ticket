@@ -197,6 +197,14 @@
           <div class="field"><label data-en="Mobile Number (OTP will come here)" data-hi="मोबाइल नंबर (OTP यहीं आएगा)">Mobile Number (OTP will come here)</label><input id="rgMob" maxlength="10" placeholder="10-digit mobile"></div>
           <div class="field"><label data-en="Email (OTP will come here too)" data-hi="ईमेल (OTP यहाँ भी आएगा)">Email (OTP will come here too)</label><input id="rgEmail" type="email" placeholder="email@example.com"></div>
           <div class="field"><label data-en="Password" data-hi="पासवर्ड">Password</label><input id="rgPass" type="password" placeholder="At least 6 characters"></div>
+          <div class="field"><label data-en="ID proof you will carry while travelling" data-hi="यात्रा के समय आप जो आईडी प्रूफ रखेंगे">ID proof you will carry while travelling</label>
+            <select id="rgIdType" style="width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;background:#fff">
+              <option value="Aadhaar Card">Aadhaar Card (Indian passenger)</option>
+              <option value="PAN Card">PAN Card (Indian passenger)</option>
+              <option value="Driving Licence">Driving Licence (Indian passenger)</option>
+              <option value="Passport">Passport (Foreign national)</option>
+            </select></div>
+          <div class="login-note" data-en="Only the ID TYPE is saved here &mdash; never the ID number. Carry the original document while travelling. Real document verification happens only on official government / IRCTC systems." data-hi="यहाँ केवल आईडी का प्रकार सेव होता है &mdash; नंबर कभी नहीं। यात्रा के समय original दस्तावेज़ साथ रखें। असली दस्तावेज़ जांच केवल सरकारी / IRCTC प्रणालियों पर होती है।">Only the ID TYPE is saved here &mdash; never the ID number. Carry the original document while travelling. Real document verification happens only on official government / IRCTC systems.</div>
           <button class="btn-orange" id="btnReg" onclick="doRegister()" data-en="SEND OTP" data-hi="OTP भेजें">SEND OTP</button>
         </div>
         <div id="regStep2" class="hidden">
@@ -346,7 +354,7 @@
           </div>
           <div style="overflow-x:auto">
             <table class="plist" id="custTable">
-              <thead><tr><th>#</th><th>Name</th><th>User Name</th><th>Mobile</th><th>Email</th><th data-en="OTP Verified" data-hi="OTP सत्यापित">OTP Verified</th><th>Passengers</th></tr></thead>
+              <thead><tr><th>#</th><th>Name</th><th>User Name</th><th>Mobile</th><th>Email</th><th data-en="OTP Verified" data-hi="OTP सत्यापित">OTP Verified</th><th data-en="ID Proof" data-hi="आईडी प्रूफ">ID Proof</th><th>Passengers</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -460,7 +468,7 @@
         if (users[k].mobile === mob) return jsonResp({ error: 'This mobile number is already registered.' }, 409);
         if (users[k].email === em) return jsonResp({ error: 'This email is already registered.' }, 409);
       }
-      var nu = { id: uid(), role: 'customer', name: name, username: un, email: em, mobile: mob, pass: pw, verified: false, created: new Date().toISOString() };
+      var nu = { id: uid(), role: 'customer', name: name, username: un, email: em, mobile: mob, pass: pw, idType: String(body.idType || 'Aadhaar Card'), verified: false, created: new Date().toISOString() };
       users[un] = nu; save('vpr_users', users);
       var code = String(100000 + Math.floor(Math.random() * 900000));
       var otps = load('vpr_otps', {});
@@ -583,7 +591,7 @@
         if (!usersA.hasOwnProperty(kk)) continue;
         var uu = usersA[kk];
         if (uu.role === 'agent') continue;
-        customers.push({ name: uu.name, username: uu.username, mobile: uu.mobile, email: uu.email, verified: uu.verified, passengers: pass.filter(function (p) { return p.userId === uu.id; }).length, created: uu.created });
+        customers.push({ name: uu.name, username: uu.username, mobile: uu.mobile, email: uu.email, idType: uu.idType || '-', verified: uu.verified, passengers: pass.filter(function (p) { return p.userId === uu.id; }).length, created: uu.created });
       }
       return jsonResp({ customers: customers, stats: { total: customers.length, verified: customers.filter(function (c) { return c.verified; }).length, passengers: pass.length } });
     }
@@ -652,7 +660,7 @@ async function doRegister() {
   var pw = document.getElementById('rgPass').value;
   var btn = document.getElementById('btnReg'); btn.disabled = true;
   try {
-    var r = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, username: un, mobile: mob, email: em, password: pw }) });
+    var r = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, username: un, mobile: mob, email: em, password: pw, idType: (document.getElementById('rgIdType') || {}).value || '' }) });
     regUsername = un;
     document.getElementById('regStep1').classList.add('hidden');
     document.getElementById('regStep2').classList.remove('hidden');
@@ -955,7 +963,7 @@ async function loadAgent() {
     var tb = document.querySelector('#custTable tbody');
     tb.innerHTML = r.customers.length ? r.customers.map(function (c, i) {
       return '<tr><td>' + (i + 1) + '</td><td><b>' + c.name + '</b></td><td>' + c.username + '</td><td>' + c.mobile + '</td><td>' + c.email +
-        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + c.passengers + '</td></tr>';
+        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + (c.idType || '-') + '</td><td>' + c.passengers + '</td></tr>';
     }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई ग्राहक नहीं।' : 'No customers registered yet.') + '</td></tr>';
   } catch (e) {}
 }
