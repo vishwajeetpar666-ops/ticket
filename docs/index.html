@@ -419,6 +419,7 @@
       <button id="nv-quick" onclick="showView('quick')" data-en="PASSENGER MASTER LIST" data-hi="पैसेंजर मास्टर लिस्ट">PASSENGER MASTER LIST</button>
       <button id="nv-agent" class="hidden" onclick="showView('agent')" data-en="AGENT PANEL" data-hi="एजेंट पैनल">AGENT PANEL</button>
       <button id="nv-settings" class="hidden" onclick="showView('settings')" data-en="INTEGRATIONS" data-hi="इंटीग्रेशन">INTEGRATIONS</button>
+      <button id="nv-ai" class="hidden" onclick="showView('ai')" data-en="AI ASSISTANT" data-hi="AI असिस्टेंट">AI ASSISTANT</button>
     </div>
   </div>
   <div class="hero-strip" data-html="1" data-en="TATKAL: <b>AC classes 10:00 AM</b> &bull; <b>Sleeper/2S 11:00 AM</b> (one day before departure from source station) &bull; Actual booking happens on the official IRCTC website/app only." data-hi="तत्काल: <b>AC श्रेणियाँ सुबह 10:00 बजे</b> &bull; <b>स्लीपर/2S सुबह 11:00 बजे</b> (सोर्स स्टेशन से रवानगी से एक दिन पहले) &bull; असली बुकिंग केवल आधिकारिक IRCTC वेबसाइट/ऐप पर होती है।">TATKAL: <b>AC classes 10:00 AM</b> &bull; <b>Sleeper/2S 11:00 AM</b> (one day before departure from source station) &bull; Actual booking happens on the official IRCTC website/app only.</div>
@@ -568,6 +569,32 @@
             <div class="note">Railway rule: customer se max <b>Rs.20</b> (Sleeper/2S) aur <b>Rs.40</b> (AC classes) per ticket. Isme se Rs.5 aapka - baaki hissa sub-agent / employee ka. Ye hisaab booking ke waqt dikhega.</div>
           </div>
           <button class="btn-search" onclick="saveSettings()">SAVE</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="AI ASSISTANT (optional)" data-hi="AI असिस्टेंट (वैकल्पिक)">AI ASSISTANT (optional)</div>
+        <div class="card-b">
+          <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+            <div><div class="cap">Provider</div><select id="setAiProvider"><option>OpenAI</option><option>Google Gemini</option><option>Sarvam AI</option><option>xAI (Grok)</option></select></div>
+            <div><div class="cap">API Key</div><input id="setAiKey" type="password" placeholder="paste your AI API key"></div>
+            <div><div class="cap">Model</div><input id="setAiModel" placeholder="e.g. gpt-4o-mini / gemini-1.5-flash"></div>
+          </div>
+          <div class="note">Key aapke browser mein hi rehti hai (kisi server par nahin jati). Assistant sawaalon ke jawab dega - par <b>booking aur seat IRCTC agent API se hi hogi</b>, AI se nahin. Provider ke saath apna base URL chahiye ho to <code>aiBase</code> set karo.</div>
+          <button class="btn-search" onclick="saveSettings()">SAVE</button>
+        </div>
+      </div>
+    </section>
+    <section id="view-ai" class="hidden">
+      <div class="card">
+        <div class="card-h" data-en="AI ASSISTANT (agent ke liye)" data-hi="AI असिस्टेंट (एजेंट के लिए)">AI ASSISTANT (agent ke liye)</div>
+        <div class="card-b">
+          <div class="warn-box" data-html="1">Ye AI assistant hai - jawab dene ke liye <b>INTEGRATIONS</b> page par apni AI key daalo (OpenAI / Google Gemini / Sarvam AI / xAI Grok). Key ke bina assistant jawab nahin dega. <b>Dhyan:</b> ye assistant booking ya seat nahin kar sakta - wo sirf IRCTC agent API se hota hai.</div>
+          <div id="aiLog" style="min-height:130px;max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:12px;background:#0f141f;margin-bottom:10px"></div>
+          <div class="form-row" style="grid-template-columns:1fr auto">
+            <input id="aiInput" placeholder="Poochho: 'Ludhiana se Prayagraj ke trains batao'...">
+            <button class="btn-search" onclick="askAi()">ASK AI</button>
+          </div>
         </div>
       </div>
     </section>
@@ -970,6 +997,7 @@ function enterApp(user) {
   var isAgent = user.role === 'agent';
   document.getElementById('nv-agent').classList.toggle('hidden', !isAgent);
   var nvs = document.getElementById('nv-settings'); if (nvs) nvs.classList.toggle('hidden', !isAgent);
+  var nva = document.getElementById('nv-ai'); if (nva) nva.classList.toggle('hidden', !isAgent);
   if (isAgent) loadSettings();
   loadPassengers();
   prefillDefaults();
@@ -977,7 +1005,7 @@ function enterApp(user) {
   showView('trains');
 }
 function showView(v) {
-  ['trains', 'quick', 'agent', 'settings'].forEach(function (x) {
+  ['trains', 'quick', 'agent', 'settings', 'ai'].forEach(function (x) {
     var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
     var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
   });
@@ -1245,6 +1273,9 @@ function loadSettings() {
     if (s.payKey) document.getElementById('setPayKey').value = s.payKey;
     if (s.paySecret) document.getElementById('setPaySecret').value = s.paySecret;
     if (s.commission) document.getElementById('setCommission').value = s.commission;
+    if (s.aiProvider) document.getElementById('setAiProvider').value = s.aiProvider;
+    if (s.aiKey) document.getElementById('setAiKey').value = s.aiKey;
+    if (s.aiModel) document.getElementById('setAiModel').value = s.aiModel;
   } catch (e) {}
   setStatus();
 }
@@ -1257,7 +1288,10 @@ function saveSettings() {
       payProvider: document.getElementById('setPayProvider').value,
       payKey: document.getElementById('setPayKey').value.trim(),
       paySecret: document.getElementById('setPaySecret').value,
-      commission: parseInt(document.getElementById('setCommission').value || '5', 10)
+      commission: parseInt(document.getElementById('setCommission').value || '5', 10),
+      aiProvider: (document.getElementById('setAiProvider') || {}).value || 'OpenAI',
+      aiKey: (document.getElementById('setAiKey') || {}).value || '',
+      aiModel: ((document.getElementById('setAiModel') || {}).value || '').trim()
     };
     localStorage.setItem('vpr_settings', JSON.stringify(s));
     toast('Settings saved (DEV MODE)');
@@ -1274,6 +1308,62 @@ function setStatus() {
   if (p) p.innerHTML = (s.payKey && s.paySecret)
     ? '<b style="color:var(--green)">Saved - ' + (s.payProvider || 'gateway') + ' keys stored</b>'
     : '<b style="color:var(--red)">Not connected</b> - apna payment gateway account (KYC + bank) banao, phir keys daalo';
+}
+
+/* ================= AI assistant (agent's own key) ================= */
+function aiMsg(who, text) {
+  var log = document.getElementById('aiLog');
+  if (!log) return null;
+  var d = document.createElement('div');
+  d.style.cssText = 'margin:6px 0;padding:9px 12px;border-radius:9px;font-size:13px;line-height:1.5;' +
+    (who === 'user' ? 'background:rgba(249,115,22,.15);margin-left:40px;' : 'background:#161d2b;margin-right:40px;');
+  d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+  return d;
+}
+async function askAi() {
+  var box = document.getElementById('aiInput');
+  var q = (box.value || '').trim();
+  if (!q) return;
+  aiMsg('user', q);
+  box.value = '';
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  if (!s.aiKey) { aiMsg('bot', 'AI key set nahin hai. INTEGRATIONS page par apni AI key daalo (OpenAI / Gemini / Sarvam / xAI).'); return; }
+  var wait = aiMsg('bot', 'Soch raha hoon...');
+  try {
+    var text = await callAi(s, q);
+    wait.textContent = text;
+  } catch (e) {
+    wait.textContent = 'Error: ' + e.message;
+  }
+}
+async function callAi(s, q) {
+  var prov = s.aiProvider || 'OpenAI';
+  if (prov === 'Google Gemini') {
+    var model = s.aiModel || 'gemini-1.5-flash';
+    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(s.aiKey), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: q }] }] })
+    });
+    var d = await r.json();
+    if (!r.ok) throw new Error((d.error && d.error.message) || ('HTTP ' + r.status));
+    var cand = (d.candidates || [])[0] || {};
+    var parts = (cand.content || {}).parts || [];
+    return parts.length ? parts[0].text : 'No reply';
+  }
+  var base = s.aiBase || (prov === 'xAI (Grok)' ? 'https://api.x.ai/v1' : (prov === 'Sarvam AI' ? 'https://api.sarvam.ai/v1' : 'https://api.openai.com/v1'));
+  var model2 = s.aiModel || (prov === 'xAI (Grok)' ? 'grok-2-latest' : (prov === 'Sarvam AI' ? 'sarvam-m' : 'gpt-4o-mini'));
+  var r2 = await fetch(base + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.aiKey },
+    body: JSON.stringify({ model: model2, messages: [{ role: 'user', content: q }] })
+  });
+  var d2 = await r2.json();
+  if (!r2.ok) throw new Error((d2.error && d2.error.message) || ('HTTP ' + r2.status));
+  var ch = (d2.choices || [])[0] || {};
+  return (ch.message || {}).content || 'No reply';
 }
 
 /* ================= clock + timer ================= */
