@@ -343,6 +343,7 @@
       <button id="nv-trains" class="active" onclick="showView('trains')" data-en="TRAIN SEARCH" data-hi="ट्रेन सर्च">TRAIN SEARCH</button>
       <button id="nv-quick" onclick="showView('quick')" data-en="PASSENGER MASTER LIST" data-hi="पैसेंजर मास्टर लिस्ट">PASSENGER MASTER LIST</button>
       <button id="nv-agent" class="hidden" onclick="showView('agent')" data-en="AGENT PANEL" data-hi="एजेंट पैनल">AGENT PANEL</button>
+      <button id="nv-settings" class="hidden" onclick="showView('settings')" data-en="INTEGRATIONS" data-hi="इंटीग्रेशन">INTEGRATIONS</button>
     </div>
   </div>
   <div class="hero-strip" data-html="1" data-en="TATKAL: <b>AC classes 10:00 AM</b> &bull; <b>Sleeper/2S 11:00 AM</b> (one day before departure from source station) &bull; Actual booking happens on the official IRCTC website/app only." data-hi="तत्काल: <b>AC श्रेणियाँ सुबह 10:00 बजे</b> &bull; <b>स्लीपर/2S सुबह 11:00 बजे</b> (सोर्स स्टेशन से रवानगी से एक दिन पहले) &bull; असली बुकिंग केवल आधिकारिक IRCTC वेबसाइट/ऐप पर होती है।">TATKAL: <b>AC classes 10:00 AM</b> &bull; <b>Sleeper/2S 11:00 AM</b> (one day before departure from source station) &bull; Actual booking happens on the official IRCTC website/app only.</div>
@@ -444,6 +445,50 @@
               <tbody></tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </section>
+    <section id="view-settings" class="hidden">
+      <div class="card">
+        <div class="card-h" data-en="IRCTC AGENT INTEGRATION (RSP / PSP)" data-hi="IRCTC एजेंट इंटीग्रेशन (RSP / PSP)">IRCTC AGENT INTEGRATION (RSP / PSP)</div>
+        <div class="card-b">
+          <div class="warn-box" data-html="1" data-en="<b>DEV MODE:</b> Ye fields aapke record ke liye hain. Asli seat availability, IRCTC username verification aur booking tab chalu hongi jab aapka <b>IRCTC agent (RSP/PSP) ID aur API access</b> aa jayega. Tab tak koi data chori nahin hoti - kuch bhi IRCTC se nahin uthaya jata." data-hi="<b>DEV MODE:</b> ये फ़ील्ड आपके रिकॉर्ड के लिए हैं। असली सीट उपलब्धता, IRCTC यूज़रनेम वेरिफिकेशन और बुकिंग तब चालू होंगी जब आपकी <b>IRCTC एजेंट (RSP/PSP) ID और API एक्सेस</b> आ जाएगी।"><b>DEV MODE:</b> Ye fields aapke record ke liye hain. Asli seat availability, IRCTC username verification aur booking tab chalu hongi jab aapka <b>IRCTC agent (RSP/PSP) ID aur API access</b> aa jayega. Tab tak koi data chori nahin hoti - kuch bhi IRCTC se nahin uthaya jata.</div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+            <div><div class="cap">RSP / Agent ID</div><input id="setRspId" placeholder="e.g. RSP12345"></div>
+            <div><div class="cap">IRCTC Agent Username</div><input id="setIrtcUser" placeholder="IRCTC username"></div>
+            <div><div class="cap">API Key / Token</div><input id="setApiKey" type="password" placeholder="paste your agent API key"></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
+            <button class="btn-search" onclick="saveSettings()">SAVE</button>
+            <span class="note" id="irtcStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="PAYMENT GATEWAY" data-hi="पेमेंट गेटवे">PAYMENT GATEWAY</div>
+        <div class="card-b">
+          <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+            <div><div class="cap">Provider</div><select id="setPayProvider"><option>Razorpay</option><option>Cashfree</option><option>PayU</option><option>PhonePe PG</option></select></div>
+            <div><div class="cap">Key ID</div><input id="setPayKey" placeholder="rzp_live_..."></div>
+            <div><div class="cap">Key Secret</div><input id="setPaySecret" type="password" placeholder="********"></div>
+          </div>
+          <div class="note">Payment gateway ke liye apna business account chahiye (KYC + bank account). Keys milne par yahan daalo - payment page chalu ho jayega (UPI / card / netbanking).</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
+            <button class="btn-search" onclick="saveSettings()">SAVE</button>
+            <span class="note" id="payStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="SERVICE CHARGE / YOUR COMMISSION" data-hi="सर्विस चार्ज / आपका कमीशन">SERVICE CHARGE / YOUR COMMISSION</div>
+        <div class="card-b">
+          <div class="form-row" style="grid-template-columns:220px 1fr">
+            <div><div class="cap">Your charge per ticket (Rs.)</div><input id="setCommission" type="number" value="5" min="0"></div>
+            <div class="note">Railway rule: customer se max <b>Rs.20</b> (Sleeper/2S) aur <b>Rs.40</b> (AC classes) per ticket. Isme se Rs.5 aapka - baaki hissa sub-agent / employee ka. Ye hisaab booking ke waqt dikhega.</div>
+          </div>
+          <button class="btn-search" onclick="saveSettings()">SAVE</button>
         </div>
       </div>
     </section>
@@ -827,13 +872,15 @@ function enterApp(user) {
     ' (' + (user.role === 'agent' ? (LANG === 'hi' ? 'एजेंट' : 'AGENT') : user.username) + ')';
   var isAgent = user.role === 'agent';
   document.getElementById('nv-agent').classList.toggle('hidden', !isAgent);
+  var nvs = document.getElementById('nv-settings'); if (nvs) nvs.classList.toggle('hidden', !isAgent);
+  if (isAgent) loadSettings();
   loadPassengers();
   prefillDefaults();
   if (isAgent) loadAgent();
   showView('trains');
 }
 function showView(v) {
-  ['trains', 'quick', 'agent'].forEach(function (x) {
+  ['trains', 'quick', 'agent', 'settings'].forEach(function (x) {
     var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
     var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
   });
@@ -977,7 +1024,10 @@ async function openKit(idx) {
       : '<b>Tatkal Quick Kit:</b> Select passengers below → press <b>COPY</b> → paste into the IRCTC passenger form → then open IRCTC below. This is the fastest legal way.') + '</div>' +
     '<b>' + kitTrain.name + ' (' + kitTrain.no + ') | ' + currentSearch.from + ' → ' + currentSearch.to + ' | ' + currentSearch.quota + ' | ' + (LANG === 'hi' ? 'श्रेणी' : 'Class') + ': ' + cls + ' | ' + fmtDate(new Date(currentSearch.date)) + '</b>' +
     '<div style="margin:12px 0">' + rows + '</div>' +
-    '<div id="kitCopyBox"></div>' +
+    '<div class="field" style="max-width:340px"><label>IRCTC Username (customer ka)</label>'
+      + '<input id="kitIrtcUser" placeholder="IRCTC username">'
+      + '<div class="note">Verification tab hogi jab aapka IRCTC agent API judega - abhi ye sirf record ke liye hai.</div></div>'
+      + '<div id="kitCopyBox"></div>' +
     '<div class="warn-box" style="margin-top:12px">' + (LANG === 'hi'
       ? '<b>यात्रा के समय आईडी प्रूफ:</b> भारतीय यात्री — original आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट; विदेशी नागरिक — original पासपोर्ट। टिकट पर नाम आईडी से मेल खाना चाहिए — यही रेलवे का नियम है।'
       : '<b>ID proof while travelling:</b> Indian passengers &mdash; original Aadhaar / PAN / Driving Licence / Passport; foreign nationals &mdash; original Passport. The name on the ticket must match the ID. This is the Railway rule.') + '</div>';
@@ -1068,6 +1118,48 @@ async function loadAgent() {
   } catch (e) {}
 }
 
+/* ================= integration settings (dev mode) ================= */
+function loadSettings() {
+  try {
+    var s = JSON.parse(localStorage.getItem('vpr_settings') || '{}');
+    if (s.rspId) document.getElementById('setRspId').value = s.rspId;
+    if (s.irtcUser) document.getElementById('setIrtcUser').value = s.irtcUser;
+    if (s.apiKey) document.getElementById('setApiKey').value = s.apiKey;
+    if (s.payProvider) document.getElementById('setPayProvider').value = s.payProvider;
+    if (s.payKey) document.getElementById('setPayKey').value = s.payKey;
+    if (s.paySecret) document.getElementById('setPaySecret').value = s.paySecret;
+    if (s.commission) document.getElementById('setCommission').value = s.commission;
+  } catch (e) {}
+  setStatus();
+}
+function saveSettings() {
+  try {
+    var s = {
+      rspId: document.getElementById('setRspId').value.trim(),
+      irtcUser: document.getElementById('setIrtcUser').value.trim(),
+      apiKey: document.getElementById('setApiKey').value,
+      payProvider: document.getElementById('setPayProvider').value,
+      payKey: document.getElementById('setPayKey').value.trim(),
+      paySecret: document.getElementById('setPaySecret').value,
+      commission: parseInt(document.getElementById('setCommission').value || '5', 10)
+    };
+    localStorage.setItem('vpr_settings', JSON.stringify(s));
+    toast('Settings saved (DEV MODE)');
+  } catch (e) { toast('Could not save'); }
+  setStatus();
+}
+function setStatus() {
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  var i = document.getElementById('irtcStatus'), p = document.getElementById('payStatus');
+  if (i) i.innerHTML = (s.rspId && s.apiKey)
+    ? '<b style="color:var(--green)">Saved - waiting for IRCTC to activate your agent API</b>'
+    : '<b style="color:var(--red)">Not connected</b> - RSP ID + API key ke bina availability/booking chalu nahin hoti';
+  if (p) p.innerHTML = (s.payKey && s.paySecret)
+    ? '<b style="color:var(--green)">Saved - ' + (s.payProvider || 'gateway') + ' keys stored</b>'
+    : '<b style="color:var(--red)">Not connected</b> - apna payment gateway account (KYC + bank) banao, phir keys daalo';
+}
+
 /* ================= clock + timer ================= */
 function tickClock() {
   var d = new Date();
@@ -1090,6 +1182,7 @@ document.getElementById('agPass').addEventListener('keydown', function (e) { if 
 
 /* ================= init ================= */
 applyLang();
+loadSettings();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
 </script>
