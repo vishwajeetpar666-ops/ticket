@@ -221,6 +221,8 @@
         <div id="agMsg" class="msg"></div>
       </div>
 
+      <div class="login-note" style="border-top:1px solid #dfe3ec;padding-top:12px" data-html="1" data-en="<b>ID proof required for travel:</b> Indian passengers must carry an ORIGINAL Aadhaar / PAN card / Driving Licence / Passport; foreign nationals must carry an ORIGINAL Passport. Document verification happens only on official government / IRCTC systems." data-hi="<b>यात्रा के लिए आईडी प्रूफ ज़रूरी:</b> भारतीय यात्री — original आधार / पैन कार्ड / ड्राइविंग लाइसेंस / पासपोर्ट; विदेशी नागरिक — original पासपोर्ट। दस्तावेज़ों की जांच केवल सरकारी / IRCTC प्रणालियों पर होती है।"><b>ID proof required for travel:</b> Indian passengers must carry an ORIGINAL Aadhaar / PAN card / Driving Licence / Passport; foreign nationals must carry an ORIGINAL Passport. Document verification happens only on official government / IRCTC systems.</div>
+
     </div>
   </div>
 </div>
@@ -867,7 +869,10 @@ async function openKit(idx) {
       : '<b>Tatkal Quick Kit:</b> Select passengers below → press <b>COPY</b> → paste into the IRCTC passenger form → then open IRCTC below. This is the fastest legal way.') + '</div>' +
     '<b>' + kitTrain.name + ' (' + kitTrain.no + ') | ' + currentSearch.from + ' → ' + currentSearch.to + ' | ' + currentSearch.quota + ' | ' + (LANG === 'hi' ? 'श्रेणी' : 'Class') + ': ' + cls + ' | ' + fmtDate(new Date(currentSearch.date)) + '</b>' +
     '<div style="margin:12px 0">' + rows + '</div>' +
-    '<div id="kitCopyBox"></div>';
+    '<div id="kitCopyBox"></div>' +
+    '<div class="warn-box" style="margin-top:12px">' + (LANG === 'hi'
+      ? '<b>यात्रा के समय आईडी प्रूफ:</b> भारतीय यात्री — original आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट; विदेशी नागरिक — original पासपोर्ट। टिकट पर नाम आईडी से मेल खाना चाहिए — यही रेलवे का नियम है।'
+      : '<b>ID proof while travelling:</b> Indian passengers &mdash; original Aadhaar / PAN / Driving Licence / Passport; foreign nationals &mdash; original Passport. The name on the ticket must match the ID. This is the Railway rule.') + '</div>';
   document.getElementById('kitFoot').innerHTML =
     '<button class="btn-grey" onclick="closeKit()">' + (LANG === 'hi' ? 'बंद करें' : 'Close') + '</button>' +
     '<button class="btn-grey" onclick="kitCopy()">' + (LANG === 'hi' ? '📋 COPY पैसेंजर' : '📋 COPY PASSENGERS') + '</button>' +
