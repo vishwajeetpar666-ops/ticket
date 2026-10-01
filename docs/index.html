@@ -766,10 +766,24 @@ function attachAutocomplete(inputId, acId) {
   input.addEventListener('input', function () {
     var q = input.value.trim().toLowerCase();
     if (q.length < 2) { ac.style.display = 'none'; return; }
-    var hits = STATIONS.filter(function (s) {
-      return s[0].toLowerCase().indexOf(q) >= 0 || s[1].toLowerCase().indexOf(q) === 0 ||
-        (s[2] && s[2].toLowerCase().indexOf(q) >= 0);
-    }).slice(0, 20);
+    function sc(s) {
+      var n = s[0].toLowerCase();
+      if (n.indexOf(q) === 0) return 0;
+      var words = n.replace(/[^a-z0-9]+/g, ' ').split(' ');
+      for (var w = 0; w < words.length; w++) { if (words[w].indexOf(q) === 0) return 1; }
+      if (n.indexOf(q) >= 0) return 2;
+      if (s[1].toLowerCase().indexOf(q) === 0) return 3;
+      if (s[2] && s[2].toLowerCase().indexOf(q) >= 0) return 4;
+      return 9;
+    }
+    var hits = STATIONS.filter(function (s) { return sc(s) < 9; });
+    hits.sort(function (a, b) {
+      var d = sc(a) - sc(b); if (d) return d;
+      var ma = (a[3] === 1) ? 0 : 1, mb = (b[3] === 1) ? 0 : 1;
+      if (ma !== mb) return ma - mb;
+      return a[0].length - b[0].length;
+    });
+    hits = hits.slice(0, 20);
     if (!hits.length) { ac.style.display = 'none'; return; }
     ac.innerHTML = hits.map(function (s) {
       return '<div onclick="pickStation(\'' + inputId + '\',\'' + acId + '\',\'' + s[1] + '\')"><span>' + s[0] + ' (' + s[1] + ')</span><span class="code">' + (s[2] ? s[2] : '') + '</span></div>';
