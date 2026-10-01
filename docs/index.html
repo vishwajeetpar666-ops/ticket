@@ -789,6 +789,24 @@
       }
     }
 
+    if (path.indexOf('/api/passengers/') === 0 && path.indexOf('/clear-id') > 0 && method === 'POST') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var pidc = path.split('/')[3];
+      var listc = load('vpr_passengers', []);
+      var found = false;
+      listc.forEach(function (p) { if (p.id === pidc && p.userId === session.id) { p.idType = ''; p.idMasked = ''; found = true; } });
+      save('vpr_passengers', listc);
+      return jsonResp({ ok: true, cleared: found });
+    }
+
+    if (path === '/api/agent/clear-id' && method === 'POST') {
+      if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
+      var usersC = load('vpr_users', {});
+      var ck = String(body.username || '').trim().toLowerCase();
+      if (usersC[ck]) { usersC[ck].idType = ''; usersC[ck].idMasked = ''; usersC[ck].idNumber = ''; save('vpr_users', usersC); return jsonResp({ ok: true }); }
+      return jsonResp({ error: 'Customer not found.' }, 404);
+    }
+
     if (path.indexOf('/api/passengers/') === 0 && method === 'DELETE') {
       if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
       var pid = path.split('/').pop();
@@ -1191,7 +1209,7 @@ function renderPassengers(list) {
   var tb = document.querySelector('#passTable tbody');
   tb.innerHTML = list.length ? list.map(function (p, i) {
     return '<tr><td>' + (i + 1) + '</td><td><b>' + p.name + '</b></td><td>' + p.age + '</td><td>' + p.gender + '</td><td>' + p.berth + '</td><td>' + p.food +
-      '</td><td>' + (p.idType ? (p.idType + '<br><span class="note">' + (p.idMasked || '') + '</span>') : '-') +
+      '</td><td>' + (p.idType ? (p.idType + '<br><span class="note">' + (p.idMasked || '') + '</span><br><button class="btn-sm" onclick="clearPassengerId(\'' + p.id + '\')">Clear ID</button>') : '-') +
       '</td><td><button class="btn-sm red" onclick="delPassenger(\'' + p.id + '\')">' + (LANG === 'hi' ? 'हटाएं' : 'Delete') + '</button></td></tr>';
   }).join('') : '<tr><td colspan="8" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई यात्री सेव नहीं है। ऊपर फॉर्म से जोड़ें।' : 'No passengers saved yet. Add them with the form above.') + '</td></tr>';
 }
@@ -1208,6 +1226,22 @@ async function addPassenger() {
     if (document.getElementById('pfIdNum')) document.getElementById('pfIdNum').value = '';
     loadPassengers();
     toast(LANG === 'hi' ? 'यात्री सेव हो गया' : 'Passenger saved');
+  } catch (e) { toast(e.message); }
+}
+async function clearPassengerId(id) {
+  if (!confirm(LANG === 'hi' ? 'Is passenger ka ID record delete karna hai?' : 'Delete this passenger\'s ID record?')) return;
+  try {
+    await api('/api/passengers/' + id + '/clear-id', { method: 'POST' });
+    loadPassengers();
+    toast(LANG === 'hi' ? 'ID delete ho gaya' : 'ID deleted');
+  } catch (e) { toast(e.message); }
+}
+async function clearCustomerId(username) {
+  if (!confirm(LANG === 'hi' ? 'Is customer ka ID record delete karna hai?' : 'Delete this customer\'s ID record?')) return;
+  try {
+    await api('/api/agent/clear-id', { method: 'POST', body: JSON.stringify({ username: username }) });
+    loadAgent();
+    toast(LANG === 'hi' ? 'ID delete ho gaya' : 'ID deleted');
   } catch (e) { toast(e.message); }
 }
 async function delPassenger(id) {
@@ -1241,7 +1275,7 @@ async function loadAgent() {
     var tb = document.querySelector('#custTable tbody');
     tb.innerHTML = r.customers.length ? r.customers.map(function (c, i) {
       return '<tr><td>' + (i + 1) + '</td><td><b>' + c.name + '</b></td><td>' + c.username + '</td><td>' + c.mobile + '</td><td>' + c.email +
-        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + (c.idType || '-') + (c.idMasked ? '<br><span class="note">' + c.idMasked + '</span>' : '') + '</td><td>' + c.passengers + '</td></tr>';
+        '</td><td>' + (c.verified ? '<b style="color:var(--green)">✔ YES</b>' : '<span style="color:var(--red)">NO</span>') + '</td><td>' + (c.idType || '-') + (c.idMasked ? '<br><span class="note">' + c.idMasked + '</span><br><button class="btn-sm" onclick="clearCustomerId(\'' + c.username + '\')">Clear ID</button>' : '') + '</td><td>' + c.passengers + '</td></tr>';
     }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई ग्राहक नहीं।' : 'No customers registered yet.') + '</td></tr>';
   } catch (e) {}
 }
