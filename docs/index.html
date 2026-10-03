@@ -337,6 +337,10 @@
   .tc-times .dur{color:#c2cee0 !important;}
   .warn-box,.warn-box *{color:#f5cf94 !important;}
   #previewBar,footer{color:#9fb0c9 !important;}
+
+  .steps{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .steps button{border:1px solid var(--border);background:#0f141f;color:#aab8cf;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;cursor:default;}
+  .steps button.active{background:rgba(249,115,22,.15);color:#ff9a4d;border-color:#f97316;}
 </style>
 </head>
 <body>
@@ -1227,38 +1231,96 @@ function pickCls(btn, c, idx) {
 
 /* ================= Tatkal Quick Kit ================= */
 var kitTrain = null;
+var kitStep = 1, kitCls = '', kitPaxSel = [];
 async function openKit(idx) {
   var r = await api('/api/trains?from=' + currentSearch.from + '&to=' + currentSearch.to);
   kitTrain = r.trains[idx];
   if (!kitTrain) return;
-  var pax = await api('/api/passengers');
   var activeCls = document.querySelector('#resultsWrap .train-card:nth-child(' + (idx + 1) + ') .cls-tabs button.active');
-  var cls = activeCls ? activeCls.textContent : kitTrain.classes[0];
-  var rows = pax.passengers.length ? pax.passengers.map(function (p, i) {
-    return '<div class="pax-row"><input type="checkbox" checked data-name="' + p.name + '" data-age="' + p.age + '" data-gen="' + p.gender + '" data-berth="' + p.berth + '" data-food="' + p.food + '">' +
-      '<b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + '</span></div>';
-  }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'मास्टर लिस्ट खाली है - पहले PASSENGER MASTER LIST में यात्री जोड़ें।' : 'Your master list is empty - add passengers first in PASSENGER MASTER LIST.') + '</div>';
-  document.getElementById('kitBody').innerHTML =
-    '<div class="warn-box">' + (LANG === 'hi'
-      ? '<b>तत्काल क्विक किट:</b> नीचे यात्री चुनें → <b>COPY</b> दबाएं → IRCTC के पैसेंजर फॉर्म में पेस्ट करें → फिर नीचे IRCTC खोलें। यही सबसे तेज़ कानूनी तरीका है।'
-      : '<b>Tatkal Quick Kit:</b> Select passengers below → press <b>COPY</b> → paste into the IRCTC passenger form → then open IRCTC below. This is the fastest legal way.') + '</div>' +
-    '<b>' + kitTrain.name + ' (' + kitTrain.no + ') | ' + currentSearch.from + ' → ' + currentSearch.to + ' | ' + currentSearch.quota + ' | ' + (LANG === 'hi' ? 'श्रेणी' : 'Class') + ': ' + cls + ' | ' + fmtDate(new Date(currentSearch.date)) + '</b>' +
-    '<div style="margin:12px 0">' + rows + '</div>' +
-    '<div class="field" style="max-width:340px"><label>IRCTC Username (customer ka)</label>'
-      + '<input id="kitIrtcUser" placeholder="IRCTC username">'
-      + '<div class="note">Verification tab hogi jab aapka IRCTC agent API judega - abhi ye sirf record ke liye hai.</div></div>'
-      + '<div id="kitCopyBox"></div>' +
-    '<div class="warn-box" style="margin-top:12px">' + (LANG === 'hi'
-      ? '<b>यात्रा के समय आईडी प्रूफ:</b> भारतीय यात्री — original आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट; विदेशी नागरिक — original पासपोर्ट। टिकट पर नाम आईडी से मेल खाना चाहिए — यही रेलवे का नियम है।'
-      : '<b>ID proof while travelling:</b> Indian passengers &mdash; original Aadhaar / PAN / Driving Licence / Passport; foreign nationals &mdash; original Passport. The name on the ticket must match the ID. This is the Railway rule.') + '</div>';
-  document.getElementById('kitFoot').innerHTML =
-    '<button class="btn-grey" onclick="closeKit()">' + (LANG === 'hi' ? 'बंद करें' : 'Close') + '</button>' +
-    '<button class="btn-grey" onclick="kitCopy()">' + (LANG === 'hi' ? '📋 COPY पैसेंजर' : '📋 COPY PASSENGERS') + '</button>' +
-    '<a class="btn-book" target="_blank" href="https://www.irctc.co.in/nget/booking/train-list" onclick="toast(\'' + (LANG === 'hi' ? 'IRCTC नई टैब में खुला' : 'IRCTC opened in new tab') + '\')">' + (LANG === 'hi' ? 'IRCTC खोलें →' : 'OPEN IRCTC →') + '</a>';
+  kitCls = activeCls ? activeCls.textContent : kitTrain.classes[0];
+  kitStep = 1; kitPaxSel = [];
   document.getElementById('kitModal').classList.add('open');
+  kitRender();
 }
+function kitSteps() {
+  var names = ['Passengers', 'Review', 'Confirm'];
+  return '<div class="steps">' + names.map(function (n, i) {
+    return '<button class="' + (kitStep === i + 1 ? 'active' : '') + '">' + (i + 1) + '. ' + n + '</button>';
+  }).join('') + '</div>';
+}
+function kitTrainLine() {
+  return '<b>' + kitTrain.name + ' (' + kitTrain.no + ')</b> <span class="note">' + (kitTrain.note || '') + '</span><br>' +
+    '<span class="note">' + currentSearch.from + ' &rarr; ' + currentSearch.to + ' | ' + kitCls + ' | ' + currentSearch.quota + ' | ' + fmtDate(new Date(currentSearch.date)) + '</span>';
+}
+async function kitRender() {
+  var body = document.getElementById('kitBody'), foot = document.getElementById('kitFoot');
+  if (kitStep === 1) {
+    var pax = await api('/api/passengers');
+    var rows = pax.passengers.length ? pax.passengers.map(function (p, i) {
+      return '<div class="pax-row"><input type="checkbox" checked data-name="' + p.name + '" data-age="' + p.age + '" data-gen="' + p.gender + '" data-berth="' + p.berth + '" data-food="' + p.food + '">' +
+        '<b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + '</span></div>';
+    }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'मास्टर लिस्ट खाली है - पहले PASSENGER MASTER LIST में यात्री जोड़ें।' : 'Your master list is empty - add passengers first in PASSENGER MASTER LIST.') + '</div>';
+    body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
+      '<div style="margin:12px 0">' + rows + '</div><div id="kitCopyBox"></div>';
+    foot.innerHTML = '<button class="btn-grey" onclick="closeKit()">' + (LANG === 'hi' ? 'बंद' : 'Close') + '</button>' +
+      '<button class="btn-grey" onclick="kitCopy()">&#128203; COPY PASSENGERS</button>' +
+      '<button class="btn-book" onclick="kitNext()">' + (LANG === 'hi' ? 'आगे: रिव्यू →' : 'NEXT: REVIEW →') + '</button>';
+  } else if (kitStep === 2) {
+    var sel = kitPaxSel.length ? kitPaxSel : kitSelected();
+    var charge = 5;
+    body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
+      '<div style="margin:12px 0"><b>' + (LANG === 'hi' ? 'यात्री' : 'Passengers') + ' (' + sel.length + ')</b>' +
+      (sel.length ? sel.map(function (p, i) {
+        return '<div class="pax-row"><b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + ' | ' + p.food + '</span></div>';
+      }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'कोई यात्री नहीं चुना।' : 'No passenger selected.') + '</div>') + '</div>' +
+      '<div class="warn-box">' + (LANG === 'hi'
+        ? 'किराया: IRCTC पर दिखेगा | आपका सर्विस चार्ज: <b>Rs.' + charge + ' प्रति टिकट</b> | IRCTC convenience fee अलग।'
+        : 'Fare: shown on IRCTC | Your service charge: <b>Rs.' + charge + ' per ticket</b> | IRCTC convenience fee extra.') + '</div>';
+    foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
+      '<button class="btn-book" onclick="kitNext()">' + (LANG === 'hi' ? 'आगे: कन्फर्म →' : 'NEXT: CONFIRM →') + '</button>';
+  } else {
+    body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
+      '<div class="field" style="max-width:360px;margin-top:10px"><label>IRCTC Username (customer ka)</label>' +
+      '<input id="kitIrtcUser" placeholder="IRCTC username">' +
+      '<div class="note">Verification tab hogi jab aapka IRCTC agent API judega - abhi ye sirf record ke liye hai.</div></div>' +
+      '<div class="warn-box">' + (LANG === 'hi'
+        ? '<b>यात्रा के समय आईडी प्रूफ:</b> भारतीय यात्री — original आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट; विदेशी नागरिक — original पासपोर्ट। नाम टिकट और आईडी पर मेल खाना चाहिए।'
+        : '<b>ID proof while travelling:</b> Indian passengers &mdash; original Aadhaar / PAN / Driving Licence / Passport; foreign nationals &mdash; original Passport. The name must match on the ticket and the ID.') + '</div>' +
+      '<div class="warn-box">' + (LANG === 'hi'
+        ? 'आखिरी बुकिंग IRCTC के सिस्टम से होती है। आपका RSP/agent API जुड़ते ही यह स्टेप आपकी साइट से ही पूरा होगा।'
+        : 'The final booking happens through IRCTC\'s system. Once your RSP/agent API is connected, this step will complete on your own site.') + '</div>';
+    foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
+      '<button class="btn-grey" onclick="kitCopy()">&#128203; COPY PASSENGERS</button>' +
+      '<a class="btn-book" target="_blank" href="https://www.irctc.co.in/nget/booking/train-list">PROCEED ON IRCTC &rarr;</a>';
+  }
+}
+function kitSelected() {
+  var out = [];
+  document.querySelectorAll('#kitBody .pax-row input:checked').forEach(function (b) {
+    out.push({ name: b.getAttribute('data-name'), age: b.getAttribute('data-age'), gender: b.getAttribute('data-gen'), berth: b.getAttribute('data-berth'), food: b.getAttribute('data-food') });
+  });
+  return out;
+}
+function kitNext() {
+  if (kitStep === 1) {
+    var sel = kitSelected();
+    if (!sel.length) { toast(LANG === 'hi' ? 'कम से कम एक यात्री चुनें' : 'Select at least one passenger'); return; }
+    kitPaxSel = sel;
+  }
+  if (kitStep < 3) { kitStep++; kitRender(); }
+}
+function kitBack() { if (kitStep > 1) { kitStep--; kitRender(); } }
 function kitCopy() {
   var boxes = document.querySelectorAll('#kitBody .pax-row input:checked');
+  if (!boxes.length && kitPaxSel.length) {
+    var txt0 = kitPaxSel.map(function (p) { var g = p.gender === 'Male' ? 'M' : p.gender === 'Female' ? 'F' : 'T'; return p.name + ' | ' + p.age + ' | ' + g + ' | India | ' + p.berth + ' | ' + p.food; });
+    var out0 = txt0.join('\n');
+    var box0 = document.getElementById('kitCopyBox');
+    if (box0) box0.innerHTML = '<textarea class="copy-area">' + out0 + '</textarea>';
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(out0).then(function () { toast('Copied!'); }, function () { toast('Copy from the box below'); }); }
+    else toast('Copy from the box below');
+    return;
+  }
   if (!boxes.length) { toast(LANG === 'hi' ? 'कम से कम एक यात्री चुनें' : 'Select at least one passenger'); return; }
   var txt = [];
   boxes.forEach(function (b) {
