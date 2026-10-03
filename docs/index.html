@@ -551,6 +551,27 @@
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-h" data-en="EMPLOYEES / SUB-AGENTS (unke apne ID)" data-hi="कर्मचारी / सब-एजेंट (उनकी अपनी ID)">EMPLOYEES / SUB-AGENTS (unke apne ID)</div>
+        <div class="card-b">
+          <div class="note">Apne employee / sub-agent ke liye ID banao - wo apne username-password se login karega. Unka commission hissa (Rs.) bhi set karo.</div>
+          <div class="form-row" style="grid-template-columns:1.2fr 1fr 1fr 1fr 0.8fr auto">
+            <div><div class="cap">NAME</div><input id="empName" placeholder="Employee name"></div>
+            <div><div class="cap">USERNAME</div><input id="empUser" placeholder="login id"></div>
+            <div><div class="cap">MOBILE</div><input id="empMob" maxlength="10" placeholder="10-digit"></div>
+            <div><div class="cap">PASSWORD</div><input id="empPass" type="password" placeholder="min 6 chars"></div>
+            <div><div class="cap">SHARE (Rs.)</div><input id="empShare" type="number" value="15"></div>
+            <button class="btn-search" style="height:38px" onclick="addEmployee()">+ ADD ID</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="plist" id="empTable">
+              <thead><tr><th>#</th><th>Name</th><th>User Name</th><th>Mobile</th><th>Share (Rs.)</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
     <section id="view-settings" class="hidden">
       <div class="card">
@@ -823,6 +844,37 @@
       return jsonResp({ ok: true, cleared: found });
     }
 
+    if (path === '/api/agent/employees') {
+      if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
+      var emps = load('vpr_employees', []);
+      if (method === 'GET') return jsonResp({ employees: emps });
+      if (method === 'POST') {
+        var en = String(body.name || '').trim(), eu = String(body.username || '').trim().toLowerCase();
+        var emob = String(body.mobile || '').trim(), epw = String(body.password || ''), esh = parseInt(body.share || '0', 10);
+        if (!en || en.length < 2) return jsonResp({ error: 'Employee ka naam likhein.' }, 400);
+        if (!/^[a-z0-9_]{3,20}$/.test(eu)) return jsonResp({ error: 'Username 3-20 characters (a-z, 0-9, _).' }, 400);
+        if (!epw || epw.length < 6) return jsonResp({ error: 'Password kam se kam 6 characters.' }, 400);
+        var usersE = load('vpr_users', {});
+        if (usersE[eu]) return jsonResp({ error: 'Ye username already liya ja chuka hai.' }, 409);
+        var ne = { id: uid(), role: 'employee', name: en, username: eu, mobile: emob, email: '', pass: epw,
+                   verified: true, share: esh, ownerId: session.id, created: new Date().toISOString() };
+        usersE[eu] = ne; save('vpr_users', usersE);
+        var rec = { id: ne.id, name: en, username: eu, mobile: emob, share: esh, created: ne.created };
+        emps.push(rec); save('vpr_employees', emps);
+        return jsonResp({ ok: true, employee: rec });
+      }
+    }
+
+    if (path.indexOf('/api/agent/employees/') === 0 && method === 'DELETE') {
+      if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
+      var eid = path.split('/').pop();
+      save('vpr_employees', load('vpr_employees', []).filter(function (e) { return e.id !== eid; }));
+      var usersD = load('vpr_users', {});
+      for (var kk in usersD) { if (usersD[kk].id === eid) delete usersD[kk]; }
+      save('vpr_users', usersD);
+      return jsonResp({ ok: true });
+    }
+
     if (path === '/api/agent/clear-id' && method === 'POST') {
       if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
       var usersC = load('vpr_users', {});
@@ -1044,6 +1096,7 @@ function enterApp(user) {
   loadPassengers();
   prefillDefaults();
   if (isAgent) loadAgent();
+  if (isAgent) loadEmployees();
   showView('trains');
 }
 function showView(v) {
@@ -1251,6 +1304,38 @@ async function addPassenger() {
     loadPassengers();
     toast(LANG === 'hi' ? 'यात्री सेव हो गया' : 'Passenger saved');
   } catch (e) { toast(e.message); }
+}
+async function loadEmployees() {
+  try {
+    var r = await api('/api/agent/employees');
+    var tb = document.querySelector('#empTable tbody');
+    if (!tb) return;
+    var list = r.employees || [];
+    tb.innerHTML = list.length ? list.map(function (e, i) {
+      return '<tr><td>' + (i + 1) + '</td><td><b>' + e.name + '</b></td><td>' + e.username + '</td><td>' + (e.mobile || '-') +
+        '</td><td>' + (e.share || 0) + '</td><td><button class="btn-sm red" onclick="delEmployee(\'' + e.id + '\')">Delete</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" class="note" style="padding:16px">Abhi koi employee ID nahin bana. Upar form se banao.</td></tr>';
+  } catch (e) {}
+}
+async function addEmployee() {
+  var body = {
+    name: (document.getElementById('empName') || {}).value || '',
+    username: (document.getElementById('empUser') || {}).value || '',
+    mobile: (document.getElementById('empMob') || {}).value || '',
+    password: (document.getElementById('empPass') || {}).value || '',
+    share: (document.getElementById('empShare') || {}).value || 15
+  };
+  try {
+    await api('/api/agent/employees', { method: 'POST', body: JSON.stringify(body) });
+    document.getElementById('empName').value = ''; document.getElementById('empUser').value = '';
+    document.getElementById('empMob').value = ''; document.getElementById('empPass').value = '';
+    loadEmployees();
+    toast(LANG === 'hi' ? 'Employee ID ban gayi' : 'Employee ID created');
+  } catch (e) { toast(e.message); }
+}
+async function delEmployee(id) {
+  if (!confirm(LANG === 'hi' ? 'Ye employee ID delete karni hai?' : 'Delete this employee ID?')) return;
+  try { await api('/api/agent/employees/' + id, { method: 'DELETE' }); loadEmployees(); toast('Deleted'); } catch (e) { toast(e.message); }
 }
 async function clearPassengerId(id) {
   if (!confirm(LANG === 'hi' ? 'Is passenger ka ID record delete karna hai?' : 'Delete this passenger\'s ID record?')) return;
