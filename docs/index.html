@@ -341,6 +341,9 @@
   .steps{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
   .steps button{border:1px solid var(--border);background:#0f141f;color:#aab8cf;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;cursor:default;}
   .steps button.active{background:rgba(249,115,22,.15);color:#ff9a4d;border-color:#f97316;}
+
+  .avail-note{font-size:11.5px;color:#aab8cf;padding:7px 14px;border-top:1px solid var(--border);}
+  .avail-note b{color:#ff9a4d;}
 </style>
 </head>
 <body>
@@ -1218,6 +1221,7 @@ function trainCard(t, idx) {
     '<div class="dur">' + t.dist + ' km</div>' +
     '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
     '<div class="cls-tabs">' + tabs + '</div>' +
+    '<div class="avail-note" id="avail' + idx + '"></div>' +
     '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया' : 'FARE') + '</small><span id="fare' + idx + '">' + (fare ? ('₹ ' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
     '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK ON IRCTC →' : 'BOOK ON IRCTC →') + '</button></div></div>';
 }
@@ -1225,8 +1229,12 @@ function pickCls(btn, c, idx) {
   var card = btn.closest('.train-card');
   card.querySelectorAll('.cls-tabs button').forEach(function (b) { b.classList.remove('active'); });
   btn.classList.add('active');
-  var fareEl = document.getElementById('fare' + idx);
+  var fareEl = card.querySelector('#fare' + idx);
   if (fareEl) fareEl.textContent = (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC');
+  var av = card.querySelector('#avail' + idx);
+  if (av) av.innerHTML = (LANG === 'hi'
+    ? 'चुना गया: <b>' + c + '</b> &nbsp;|&nbsp; सीट उपलब्धता: लाइव सीट नंबर (AVL/WL) IRCTC agent API जुड़ने पर यहीं दिखेंगे।'
+    : 'Selected: <b>' + c + '</b> &nbsp;|&nbsp; Availability: live seat numbers (AVL/WL) will show here once your IRCTC agent API is connected.');
 }
 
 /* ================= Tatkal Quick Kit ================= */
@@ -1243,7 +1251,7 @@ async function openKit(idx) {
   kitRender();
 }
 function kitSteps() {
-  var names = ['Passengers', 'Review', 'Confirm'];
+  var names = ['Passengers', 'Review', 'Confirm', 'Payment'];
   return '<div class="steps">' + names.map(function (n, i) {
     return '<button class="' + (kitStep === i + 1 ? 'active' : '') + '">' + (i + 1) + '. ' + n + '</button>';
   }).join('') + '</div>';
@@ -1278,20 +1286,37 @@ async function kitRender() {
         : 'Fare: shown on IRCTC | Your service charge: <b>Rs.' + charge + ' per ticket</b> | IRCTC convenience fee extra.') + '</div>';
     foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
       '<button class="btn-book" onclick="kitNext()">' + (LANG === 'hi' ? 'आगे: कन्फर्म →' : 'NEXT: CONFIRM →') + '</button>';
-  } else {
+  } else if (kitStep === 3) {
     body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
       '<div class="field" style="max-width:360px;margin-top:10px"><label>IRCTC Username (customer ka)</label>' +
       '<input id="kitIrtcUser" placeholder="IRCTC username">' +
       '<div class="note">Verification tab hogi jab aapka IRCTC agent API judega - abhi ye sirf record ke liye hai.</div></div>' +
       '<div class="warn-box">' + (LANG === 'hi'
         ? '<b>यात्रा के समय आईडी प्रूफ:</b> भारतीय यात्री — original आधार / पैन / ड्राइविंग लाइसेंस / पासपोर्ट; विदेशी नागरिक — original पासपोर्ट। नाम टिकट और आईडी पर मेल खाना चाहिए।'
-        : '<b>ID proof while travelling:</b> Indian passengers &mdash; original Aadhaar / PAN / Driving Licence / Passport; foreign nationals &mdash; original Passport. The name must match on the ticket and the ID.') + '</div>' +
-      '<div class="warn-box">' + (LANG === 'hi'
-        ? 'आखिरी बुकिंग IRCTC के सिस्टम से होती है। आपका RSP/agent API जुड़ते ही यह स्टेप आपकी साइट से ही पूरा होगा।'
-        : 'The final booking happens through IRCTC\'s system. Once your RSP/agent API is connected, this step will complete on your own site.') + '</div>';
+        : '<b>ID proof while travelling:</b> Indian passengers &mdash; original Aadhaar / PAN / Driving Licence / Passport; foreign nationals &mdash; original Passport. The name must match on the ticket and the ID.') + '</div>';
     foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
       '<button class="btn-grey" onclick="kitCopy()">&#128203; COPY PASSENGERS</button>' +
-      '<a class="btn-book" target="_blank" href="https://www.irctc.co.in/nget/booking/train-list">PROCEED ON IRCTC &rarr;</a>';
+      '<button class="btn-book" onclick="kitNext()">' + (LANG === 'hi' ? 'आगे: पेमेंट →' : 'NEXT: PAYMENT →') + '</button>';
+  } else {
+    var st = {};
+    try { st = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+    var charge = st.commission || 5;
+    var sel4 = kitPaxSel.length ? kitPaxSel : [];
+    var payReady = !!(st.payKey && st.paySecret);
+    body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
+      '<div class="pax-row"><b>Passengers</b><span class="note">' + sel4.length + ' selected</span></div>' +
+      '<div class="pax-row"><b>Ticket fare</b><span class="note">' + (LANG === 'hi' ? 'IRCTC पर (asli fare wahi hai)' : 'On IRCTC (the real fare)') + '</span></div>' +
+      '<div class="pax-row"><b>' + (LANG === 'hi' ? 'आपका सर्विस चार्ज' : 'Your service charge') + '</b><span class="note">Rs.' + charge + ' per ticket</span></div>' +
+      '<div style="margin:12px 0"><b>' + (LANG === 'hi' ? 'पेमेंट का तरीका' : 'Payment method') + '</b>' +
+      '<div class="pax-row"><input type="radio" name="paym" checked> UPI / QR &nbsp; <input type="radio" name="paym"> Debit / Credit Card &nbsp; <input type="radio" name="paym"> Net Banking</div></div>' +
+      (payReady
+        ? '<div class="warn-box" style="border-color:#2f7d4f">' + (LANG === 'hi' ? 'Payment gateway keys mil gayi hain. Booking aapki site se chalu hogi jab IRCTC agent API bhi judega.' : 'Payment gateway keys found. Booking will run from your site once the IRCTC agent API is also connected.') + '</div>'
+        : '<div class="warn-box">' + (LANG === 'hi'
+            ? '<b>Payment gateway connected nahin hai.</b> INTEGRATIONS page par apni Razorpay / Cashfree keys daalo (business KYC + bank account ke saath) - phir payment yahin se hoga.'
+            : '<b>Payment gateway is not connected.</b> Add your Razorpay / Cashfree keys on the INTEGRATIONS page (with business KYC + bank account) - then payment will run right here.') + '</div>');
+    foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
+      '<button class="btn-grey" onclick="showView(\'settings\');closeKit();">' + (LANG === 'hi' ? 'INTEGRATIONS खोलें' : 'OPEN INTEGRATIONS') + '</button>' +
+      '<a class="btn-book" target="_blank" href="https://www.irctc.co.in/nget/booking/train-list">' + (LANG === 'hi' ? 'IRCTC पर पूरा करें →' : 'COMPLETE ON IRCTC →') + '</a>';
   }
 }
 function kitSelected() {
@@ -1307,7 +1332,7 @@ function kitNext() {
     if (!sel.length) { toast(LANG === 'hi' ? 'कम से कम एक यात्री चुनें' : 'Select at least one passenger'); return; }
     kitPaxSel = sel;
   }
-  if (kitStep < 3) { kitStep++; kitRender(); }
+  if (kitStep < 4) { kitStep++; kitRender(); }
 }
 function kitBack() { if (kitStep > 1) { kitStep--; kitRender(); } }
 function kitCopy() {
