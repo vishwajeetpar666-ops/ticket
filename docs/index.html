@@ -626,6 +626,18 @@
       </div>
     </section>
     <section id="view-settings" class="hidden">
+      <div id="pinGate" class="card hidden">
+        <div class="card-h" data-en="OWNER LOCK - PIN DAALO" data-hi="मालिक लॉक - PIN डालें">OWNER LOCK - PIN DAALO</div>
+        <div class="card-b">
+          <div class="note">Ye section (IRCTC keys, payment details, AI key) sirf owner ke liye hai. Apna owner PIN daalo.</div>
+          <div class="form-row" style="grid-template-columns:220px auto">
+            <input id="pinInput" type="password" maxlength="6" inputmode="numeric" placeholder="PIN">
+            <button class="btn-search" onclick="unlockPin()">UNLOCK</button>
+          </div>
+          <div class="note" style="margin-top:8px">PIN bhool gaye? Browser data clear karke dobara set kar sakte ho (par settings bhi hat jayengi).</div>
+        </div>
+      </div>
+      <div id="settingsContent">
       <div class="card">
         <div class="card-h" data-en="IRCTC AGENT INTEGRATION (RSP / PSP)" data-hi="IRCTC एजेंट इंटीग्रेशन (RSP / PSP)">IRCTC AGENT INTEGRATION (RSP / PSP)</div>
         <div class="card-b">
@@ -696,6 +708,25 @@
           <div class="note">Key aapke browser mein hi rehti hai (kisi server par nahin jati). Assistant sawaalon ke jawab dega - par <b>booking aur seat IRCTC agent API se hi hogi</b>, AI se nahin. Provider ke saath apna base URL chahiye ho to <code>aiBase</code> set karo.</div>
           <button class="btn-search" onclick="saveSettings()">SAVE</button>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="SECURITY (OWNER ONLY)" data-hi="सुरक्षा (केवल मालिक)">SECURITY (OWNER ONLY)</div>
+        <div class="card-b">
+          <div class="note">Apna login password badlo, aur ek <b>owner PIN</b> set karo - PIN ke bina ye page nahin khulega.</div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+            <div><div class="cap">Purana password</div><input id="secCur" type="password" autocomplete="off"></div>
+            <div><div class="cap">Naya password</div><input id="secNew" type="password" autocomplete="off"></div>
+            <div><div class="cap">Naya password (dobara)</div><input id="secConf" type="password" autocomplete="off"></div>
+          </div>
+          <button class="btn-search" onclick="changePassword()">CHANGE PASSWORD</button>
+          <div class="form-row" style="grid-template-columns:220px auto;margin-top:10px">
+            <div><div class="cap">Owner PIN (4-6 digits)</div><input id="secPin" type="password" maxlength="6" inputmode="numeric" autocomplete="off"></div>
+            <button class="btn-grey" style="height:38px" onclick="setPin()">SET / CHANGE PIN</button>
+          </div>
+          <div class="warn-box" style="margin-top:10px" data-html="1"><b>Sach ye hai:</b> ye security browser-level hai (tumhare device par). Poori suraksha - jisme koi doosra technical banda bhi andar na aa sake - uske liye <b>server version (Render)</b> chahiye, jisme real login + database hota hai. Tab tak: password badal lo, PIN set karo, aur site ka link kisi ko na do.</div>
+        </div>
+      </div>
       </div>
     </section>
     <section id="view-ai" class="hidden">
@@ -1211,6 +1242,7 @@ function enterApp(user) {
   prefillDefaults();
   if (isAgent) loadAgent();
   if (isAgent) loadEmployees();
+  resetIdle();
   showView('trains');
 }
 function showView(v) {
@@ -1218,6 +1250,7 @@ function showView(v) {
     var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
     var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
   });
+  if (v === 'settings') gateSettings();
   window.scrollTo(0, 0);
 }
 
@@ -1612,6 +1645,56 @@ async function loadAgent() {
     }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">' + (LANG === 'hi' ? 'अभी कोई ग्राहक नहीं।' : 'No customers registered yet.') + '</td></tr>';
   } catch (e) {}
 }
+
+/* ================= security (owner lock) ================= */
+var pinUnlocked = false;
+function gateSettings() {
+  var s = {}; try { s = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  var gate = document.getElementById('pinGate'), content = document.getElementById('settingsContent');
+  if (!gate || !content) return;
+  if (s.ownerPin && !pinUnlocked) { gate.classList.remove('hidden'); content.classList.add('hidden'); }
+  else { gate.classList.add('hidden'); content.classList.remove('hidden'); }
+}
+function unlockPin() {
+  var s = {}; try { s = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  var v = ((document.getElementById('pinInput') || {}).value || '').trim();
+  if (v && v === s.ownerPin) { pinUnlocked = true; document.getElementById('pinInput').value = ''; gateSettings(); toast(LANG === 'hi' ? 'Khul gaya' : 'Unlocked'); }
+  else toast(LANG === 'hi' ? 'Galat PIN' : 'Wrong PIN');
+}
+function setPin() {
+  var p = ((document.getElementById('secPin') || {}).value || '').trim();
+  if (!/^\d{4,6}$/.test(p)) { toast(LANG === 'hi' ? 'PIN 4-6 digits ka hona chahiye' : 'PIN must be 4-6 digits'); return; }
+  var s = {}; try { s = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  s.ownerPin = p;
+  localStorage.setItem('vpr_settings', JSON.stringify(s));
+  document.getElementById('secPin').value = '';
+  pinUnlocked = true; gateSettings();
+  toast(LANG === 'hi' ? 'Owner PIN set ho gaya' : 'Owner PIN set');
+}
+function changePassword() {
+  var cur = ((document.getElementById('secCur') || {}).value || '');
+  var nw = ((document.getElementById('secNew') || {}).value || '');
+  var cf = ((document.getElementById('secConf') || {}).value || '');
+  var users = {}; try { users = JSON.parse(localStorage.getItem('vpr_users') || '{}'); } catch (e) {}
+  var me = null; for (var k in users) { if (users[k].role === 'agent') me = users[k]; }
+  if (!me) { toast('Agent account not found'); return; }
+  if (cur !== me.pass) { toast(LANG === 'hi' ? 'Purana password galat hai' : 'Current password is wrong'); return; }
+  if (!nw || nw.length < 6) { toast(LANG === 'hi' ? 'Naya password kam se kam 6 characters' : 'New password min 6 characters'); return; }
+  if (nw !== cf) { toast(LANG === 'hi' ? 'Dono password match nahin' : 'Passwords do not match'); return; }
+  me.pass = nw;
+  localStorage.setItem('vpr_users', JSON.stringify(users));
+  document.getElementById('secCur').value = ''; document.getElementById('secNew').value = ''; document.getElementById('secConf').value = '';
+  toast(LANG === 'hi' ? 'Password badal gaya' : 'Password changed');
+}
+var idleTimer = null;
+function resetIdle() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(function () {
+    var app = document.getElementById('app');
+    if (app && !app.classList.contains('hidden')) { doLogout(); toast(LANG === 'hi' ? '15 minute idle - logout ho gaya' : 'Idle 15 min - logged out'); }
+  }, 15 * 60 * 1000);
+}
+['mousemove', 'keydown', 'click', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, resetIdle); });
 
 /* ================= theme toggle ================= */
 function applyTheme() {
