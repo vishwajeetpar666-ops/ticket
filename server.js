@@ -15,6 +15,9 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1);          // Render / reverse-proxy ke peeche (HTTPS)
+app.disable('x-powered-by');        // server info chhupao
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 /* =========================================================
    EMBEDDED FRONTEND + STATION DATA (13,500+ stations)
@@ -30,6 +33,9 @@ const STATIONS_JSON_TEXT = "[[\"1 NEFS 77837 SEC NAG NGP-G BRD\",\"NEXP\",\"\"],
 const env = (k, d) => process.env[k] !== undefined ? process.env[k] : d;
 
 const SESSION_SECRET = env('SESSION_SECRET', 'please-change-this-secret-before-going-live');
+if (process.env.NODE_ENV === 'production' && SESSION_SECRET === 'please-change-this-secret-before-going-live') {
+  console.warn('!! SECURITY WARNING: SESSION_SECRET set nahin hai. Render ke Environment mein ek lamba random SESSION_SECRET daalo.');
+}
 
 /* Owner / agent account (set your own password in .env before deploying!) */
 const AGENT = {
@@ -175,11 +181,59 @@ const TRAINS = [
 
 /* ---------------- MIDDLEWARE ---------------- */
 app.use(express.json({ limit: '200kb' }));
+
+/* ================= SECURITY HARDENING ================= */
+app.use(function (req, res, next) {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "img-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline'",
+    "connect-src 'self' https://api.razorpay.com https://api.cashfree.com https://generativelanguage.googleapis.com https://api.openai.com https://api.x.ai https://api.sarvam.ai",
+    "frame-src https://api.razorpay.com https://checkout.razorpay.com",
+    "frame-ancestors 'none'"
+  ].join('; '));
+  next();
+});
+if (IS_PROD) {
+  app.use(function (req, res, next) {
+    var proto = req.headers['x-forwarded-proto'];
+    if (proto && proto.split(',')[0].trim() !== 'https') {
+      return res.redirect(301, 'https://' + req.headers.host + req.originalUrl);
+    }
+    next();
+  });
+}
+
+/* ================= BRUTE-FORCE PROTECTION ================= */
+var rlHits = {};
+function rateLimit(name, max, windowMs) {
+  return function (req, res, next) {
+    var key = name + '|' + (req.ip || 'unknown');
+    var now = Date.now();
+    var rec = rlHits[key] || { n: 0, t: now };
+    if (now - rec.t > windowMs) { rec = { n: 0, t: now }; }
+    rec.n++;
+    rlHits[key] = rec;
+    if (rec.n > max) { return res.status(429).json({ error: 'Bahut zyada koshish - thodi der baad try karein.' }); }
+    next();
+  };
+}
+app.use('/api/login', rateLimit('login', 12, 10 * 60 * 1000));
+app.use('/api/register', rateLimit('reg', 8, 60 * 60 * 1000));
+app.use('/api/resend-otp', rateLimit('resend', 6, 15 * 60 * 1000));
+app.use('/api/verify-otp', rateLimit('otp', 20, 15 * 60 * 1000));
+app.use('/api/agent', rateLimit('agent', 120, 60 * 1000));
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 /* serve frontend + station data from memory (no public folder needed) */
 app.get('/', function (req, res) { res.set('Content-Type', 'text/html; charset=utf-8'); res.send(INDEX_HTML); });
