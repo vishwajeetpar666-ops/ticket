@@ -643,18 +643,34 @@
       </div>
 
       <div class="card">
-        <div class="card-h" data-en="PAYMENT GATEWAY" data-hi="पेमेंट गेटवे">PAYMENT GATEWAY</div>
+        <div class="card-h" data-en="PAYMENT GATEWAY SETUP" data-hi="पेमेंट गेटवे सेटअप">PAYMENT GATEWAY SETUP</div>
         <div class="card-b">
+          <div class="warn-box" data-html="1">Yahan apni <b>apni</b> details bharo - ye sirf tumhare browser mein rehti hain, kisi server ya kisi aur ko nahin jaati. Account/KYC verification gateway ki apni site (Razorpay/Cashfree) par hoti hai.</div>
+
           <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
             <div><div class="cap">Provider</div><select id="setPayProvider"><option>Razorpay</option><option>Cashfree</option><option>PayU</option><option>PhonePe PG</option></select></div>
-            <div><div class="cap">Key ID</div><input id="setPayKey" placeholder="rzp_live_..."></div>
-            <div><div class="cap">Key Secret</div><input id="setPaySecret" type="password" placeholder="********"></div>
+            <div><div class="cap">PAN Number</div><input id="setPayPan" placeholder="ABCDE1234F" style="text-transform:uppercase"></div>
+            <div><div class="cap">Account Holder Name</div><input id="setPayHolder" placeholder="as per bank"></div>
           </div>
-          <div class="note">Payment gateway ke liye apna business account chahiye (KYC + bank account). Keys milne par yahan daalo - payment page chalu ho jayega (UPI / card / netbanking).</div>
+
+          <div class="form-row" style="grid-template-columns:1.2fr 1fr 1fr">
+            <div><div class="cap">Bank Account Number</div><input id="setPayBank" placeholder="account number"></div>
+            <div><div class="cap">IFSC Code</div><input id="setPayIfsc" placeholder="e.g. SBIN0001234" style="text-transform:uppercase"></div>
+            <div><div class="cap">Account Type</div><select id="setPayAcType"><option>Savings</option><option>Current</option></select></div>
+          </div>
+
+          <div class="form-row" style="grid-template-columns:1fr 1fr">
+            <div><div class="cap">Gateway Key ID</div><input id="setPayKey" placeholder="rzp_live_... / rzp_test_..."></div>
+            <div><div class="cap">Gateway Key Secret</div><input id="setPaySecret" type="password" placeholder="********"></div>
+          </div>
+
+          <div class="note">Key ID + Key Secret gateway ke dashboard se milti hain (Account &amp; Settings &rarr; API Keys). Ye details browser mein safe rehti hain - asli payment ke liye server (Render) chalu karna hoga, tab Key Secret server par rakhenge.</div>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
             <button class="btn-search" onclick="saveSettings()">SAVE</button>
+            <button class="btn-grey" onclick="checkPayment()">SAVE &amp; CHECK</button>
             <span class="note" id="payStatus"></span>
           </div>
+          <div id="payCheck" class="note" style="margin-top:6px"></div>
         </div>
       </div>
 
@@ -1422,6 +1438,7 @@ async function kitRender() {
     var charge = st.commission || 5;
     var sel4 = kitPaxSel.length ? kitPaxSel : [];
     var payReady = !!(st.payKey && st.paySecret);
+    var kycReady = !!(st.payPan && st.payBank && st.payIfsc && st.payHolder);
     body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
       '<div class="pax-row"><b>Passengers</b><span class="note">' + sel4.length + ' selected</span></div>' +
       '<div class="pax-row"><b>Ticket fare</b><span class="note">' + (LANG === 'hi' ? 'IRCTC पर (asli fare wahi hai)' : 'On IRCTC (the real fare)') + '</span></div>' +
@@ -1430,7 +1447,7 @@ async function kitRender() {
       '<div style="margin:12px 0"><b>' + (LANG === 'hi' ? 'पेमेंट का तरीका' : 'Payment method') + '</b>' +
       '<div class="pax-row"><input type="radio" name="paym" checked> UPI / QR &nbsp; <input type="radio" name="paym"> Debit / Credit Card &nbsp; <input type="radio" name="paym"> Net Banking</div></div>' +
       (payReady
-        ? '<div class="warn-box" style="border-color:#2f7d4f">' + (LANG === 'hi' ? 'Payment gateway keys mil gayi hain. Booking aapki site se chalu hogi jab IRCTC agent API bhi judega.' : 'Payment gateway keys found. Booking will run from your site once the IRCTC agent API is also connected.') + '</div>'
+        ? '<div class="warn-box" style="border-color:#2f7d4f">' + (LANG === 'hi' ? 'Payment gateway keys mil gayi hain.' : 'Payment gateway keys found.') + ' ' + (kycReady ? (LANG === 'hi' ? 'PAN + bank details bhi bhare hue hain.' : 'PAN + bank details also filled.') : (LANG === 'hi' ? 'PAN/bank details INTEGRATIONS mein bhar do.' : 'Fill PAN/bank details in INTEGRATIONS.')) + ' ' + (LANG === 'hi' ? 'Asli payment server (Render) judne par yahin se hoga.' : 'Real payment will run here once the server (Render) is connected.') + '</div>'
         : '<div class="warn-box">' + (LANG === 'hi'
             ? '<b>Payment gateway connected nahin hai.</b> INTEGRATIONS page par apni Razorpay / Cashfree keys daalo (business KYC + bank account ke saath) - phir payment yahin se hoga.'
             : '<b>Payment gateway is not connected.</b> Add your Razorpay / Cashfree keys on the INTEGRATIONS page (with business KYC + bank account) - then payment will run right here.') + '</div>');
@@ -1638,6 +1655,11 @@ function loadSettings() {
     if (s.irtcUser) document.getElementById('setIrtcUser').value = s.irtcUser;
     if (s.apiKey) document.getElementById('setApiKey').value = s.apiKey;
     if (s.payProvider) document.getElementById('setPayProvider').value = s.payProvider;
+    if (s.payPan) document.getElementById('setPayPan').value = s.payPan;
+    if (s.payHolder) document.getElementById('setPayHolder').value = s.payHolder;
+    if (s.payBank) document.getElementById('setPayBank').value = s.payBank;
+    if (s.payIfsc) document.getElementById('setPayIfsc').value = s.payIfsc;
+    if (s.payAcType) document.getElementById('setPayAcType').value = s.payAcType;
     if (s.payKey) document.getElementById('setPayKey').value = s.payKey;
     if (s.paySecret) document.getElementById('setPaySecret').value = s.paySecret;
     if (s.commission) document.getElementById('setCommission').value = s.commission;
@@ -1654,6 +1676,11 @@ function saveSettings() {
       irtcUser: document.getElementById('setIrtcUser').value.trim(),
       apiKey: document.getElementById('setApiKey').value,
       payProvider: document.getElementById('setPayProvider').value,
+      payPan: ((document.getElementById('setPayPan') || {}).value || '').toUpperCase().trim(),
+      payHolder: ((document.getElementById('setPayHolder') || {}).value || '').trim(),
+      payBank: ((document.getElementById('setPayBank') || {}).value || '').trim(),
+      payIfsc: ((document.getElementById('setPayIfsc') || {}).value || '').toUpperCase().trim(),
+      payAcType: ((document.getElementById('setPayAcType') || {}).value || 'Savings'),
       payKey: document.getElementById('setPayKey').value.trim(),
       paySecret: document.getElementById('setPaySecret').value,
       commission: parseInt(document.getElementById('setCommission').value || '5', 10),
@@ -1665,6 +1692,32 @@ function saveSettings() {
     toast('Settings saved (DEV MODE)');
   } catch (e) { toast('Could not save'); }
   setStatus();
+}
+function checkPayment() {
+  saveSettings();
+  var g = function (id) { var e = document.getElementById(id); return e ? (e.value || '').trim() : ''; };
+  var pan = g('setPayPan').toUpperCase(), ifsc = g('setPayIfsc').toUpperCase();
+  var bank = g('setPayBank'), holder = g('setPayHolder'), key = g('setPayKey'), sec = g('setPaySecret');
+  var out = [], bad = 0;
+  var panRe = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+  var ifscRe = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+  if (!pan) { out.push('&#10007; PAN number khali hai'); bad++; }
+  else if (!panRe.test(pan)) { out.push('&#10007; PAN format galat (jaise ABCDE1234F)'); bad++; }
+  else out.push('&#10003; PAN format sahi');
+  if (!holder) { out.push('&#10007; Account holder ka naam bharna hai'); bad++; } else out.push('&#10003; Account holder naam bhara');
+  if (!bank) { out.push('&#10007; Bank account number khali hai'); bad++; }
+  else if (!/^[0-9]{9,18}$/.test(bank)) { out.push('&#10007; Account number 9-18 digits ka hona chahiye'); bad++; }
+  else out.push('&#10003; Account number format sahi');
+  if (!ifsc) { out.push('&#10007; IFSC khali hai'); bad++; }
+  else if (!ifscRe.test(ifsc)) { out.push('&#10007; IFSC format galat (jaise SBIN0001234)'); bad++; }
+  else out.push('&#10003; IFSC format sahi');
+  if (!key) { out.push('&#10007; Gateway Key ID khali hai'); bad++; }
+  else if (!/^(rzp_|cf_)/.test(key)) { out.push('&#10007; Key ID galat lag rahi hai (rzp_live_... / rzp_test_...)'); bad++; }
+  else out.push('&#10003; Key ID format sahi');
+  if (!sec) { out.push('&#10007; Key Secret khali hai'); bad++; } else out.push('&#10003; Key Secret bhara');
+  var el = document.getElementById('payCheck');
+  if (el) el.innerHTML = out.join('<br>') + '<br><br><b>' + (bad ? (bad + ' cheezein theek karo.') : 'Sab format sahi! Ab gateway dashboard se apna account/KYC verify karo - uske baad payment chalu ho jayega.') + '</b>';
+  toast(bad ? (bad + ' problem mili - neeche dekho') : 'Payment details save + check ho gayi');
 }
 function setStatus() {
   var s = {};
