@@ -349,6 +349,44 @@
   .toolbar .tb-label{font-size:11px;color:#aab8cf;font-weight:700;}
   .toolbar button{background:#161d2b;border:1px solid var(--border);color:#c9d4e6;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;}
   .toolbar button.active{background:rgba(249,115,22,.15);color:#ff9a4d;border-color:#f97316;}
+
+  /* ================= LIGHT MODE (toggle) ================= */
+  body.light{background:#eef1f7 !important;color:#1c2437 !important;}
+  body.light .topbar,body.light .nav{background:#ffffff !important;border-color:#dbe1ec !important;}
+  body.light .card,body.light .train-card,body.light .stat-box,body.light .timer-box,body.light .login-card,body.light .modal{background:#ffffff !important;border-color:#dbe1ec !important;}
+  body.light .card-h{background:linear-gradient(90deg,#f6f8fc,#fff) !important;color:#12306e !important;border-color:#dbe1ec !important;}
+  body.light input,body.light select,body.light textarea,body.light .copy-area{background:#ffffff !important;color:#1c2437 !important;border-color:#c9cfdc !important;}
+  body.light input::placeholder,body.light textarea::placeholder{color:#8b98b1 !important;}
+  body.light .tc-times .t{color:#12306e !important;}
+  body.light .tc-times .stn{color:#41506b !important;}
+  body.light .tc-times .dur{color:#5c6880 !important;}
+  body.light .train-card .tname{color:#12306e !important;}
+  body.light .tno{color:#6a7488 !important;}
+  body.light .note,body.light .login-note,body.light .empty-state,body.light .field label,body.light .station-field .cap,body.light .stat-box .k,body.light .avail-note{color:#5c6880 !important;}
+  body.light table.plist th{background:#f2f5fa !important;color:#41506b !important;}
+  body.light table.plist td{border-color:#e5e9f2 !important;color:#1c2437 !important;}
+  body.light .autocomplete{background:#fff !important;border-color:#dbe1ec !important;}
+  body.light .autocomplete div{color:#1c2437 !important;border-color:#eef1f7 !important;}
+  body.light .nav-inner button{color:#41506b !important;}
+  body.light .nav-inner button.active{color:#e2570f !important;background:#fff3ea !important;}
+  body.light .toolbar{background:#fff !important;border-color:#dbe1ec !important;}
+  body.light .toolbar button{background:#f4f7ff !important;color:#41506b !important;border-color:#dbe1ec !important;}
+  body.light .toolbar button.active{background:#fff3ea !important;color:#e2570f !important;border-color:#f97316 !important;}
+  body.light .steps button{background:#f4f7ff !important;color:#41506b !important;}
+  body.light .steps button.active{background:#fff3ea !important;color:#e2570f !important;}
+  body.light .warn-box,body.light .warn-box *{background:#fff8ec !important;color:#8a5a12 !important;border-color:#f0d9a8 !important;}
+  body.light .pax-row,body.light .pax-row *{color:#1c2437 !important;border-color:#e5e9f2 !important;}
+  body.light .msg.ok{background:#eaf7ef !important;color:#14804a !important;}
+  body.light .msg.err{background:#fdecec !important;color:#c62828 !important;}
+  body.light .results-head .cnt,body.light #welcomeUser{color:#12306e !important;}
+  body.light .brandmark .t1{color:#12306e !important;}
+  body.light .modal-h{background:linear-gradient(90deg,#12306e,#2a53a8) !important;color:#ffffff !important;}
+  body.light .tc-head{background:#f8fafd !important;}
+  body.light footer{background:#fff !important;color:#5c6880 !important;box-shadow:0 -2px 10px rgba(15,42,99,.06);}
+  body.light .cls-tabs button{color:#41506b !important;}
+  body.light .cls-tabs button.active{background:#fff3ea !important;color:#e2570f !important;}
+  body.light #themeBtn,body.light .lang-btn.app{background:#f4f7ff !important;color:#12306e !important;border-color:#dbe1ec !important;}
+  body.light .btn-logout{color:#c62828 !important;border-color:#e6c9c9 !important;}
 </style>
 </head>
 <body>
@@ -442,6 +480,7 @@
         <div class="t2" data-en="Customer Portal - Fast Tatkal Assistant" data-hi="ग्राहक पोर्टल - फास्ट तत्काल असिस्टेंट">Customer Portal - Fast Tatkal Assistant</div></div>
       </div>
       <div class="topbar-right">
+        <button class="lang-btn app" id="themeBtn" onclick="toggleTheme()" title="Light / Dark">&#9728;</button>
         <button class="lang-btn app" onclick="toggleLang()" data-en="हिंदी" data-hi="English">हिंदी</button>
         <span id="liveClock"></span>
         <span id="welcomeUser"></span>
@@ -1508,6 +1547,24 @@ async function loadAgent() {
   } catch (e) {}
 }
 
+/* ================= theme toggle ================= */
+function applyTheme() {
+  var t = 'dark';
+  try { t = localStorage.getItem('vpr_theme') || 'dark'; } catch (e) {}
+  document.body.classList.toggle('light', t === 'light');
+  updateThemeBtn();
+}
+function toggleTheme() {
+  var light = document.body.classList.toggle('light');
+  try { localStorage.setItem('vpr_theme', light ? 'light' : 'dark'); } catch (e) {}
+  updateThemeBtn();
+  toast(light ? 'Light mode' : 'Dark mode');
+}
+function updateThemeBtn() {
+  var b = document.getElementById('themeBtn');
+  if (b) b.innerHTML = document.body.classList.contains('light') ? '&#127769;' : '&#9728;';
+}
+
 /* ================= ID type rules + dynamic field ================= */
 var ID_RULES = {
   'Aadhaar Card': { label: 'Aadhaar Number (12 digits)', ph: 'e.g. 1234 5678 9012', re: /^\d{12}$/, msg: 'Aadhaar number 12 ank ka hona chahiye (jaise 1234 5678 9012).' },
@@ -1650,6 +1707,7 @@ document.getElementById('agPass').addEventListener('keydown', function (e) { if 
 
 /* ================= init ================= */
 applyLang();
+applyTheme();
 loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
