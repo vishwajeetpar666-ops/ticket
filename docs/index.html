@@ -907,6 +907,12 @@
       if (!from || !to) return jsonResp({ error: 'Please select From/To stations from the list.' }, 400);
       if (from === to) return jsonResp({ error: 'From and To cannot be the same station.' }, 400);
       function tfmt(t) { return (t && t.length === 4) ? t.slice(0, 2) + ':' + t.slice(2) : '--:--'; }
+      function estFare(km, cls) {
+        var rate = { '2S': 0.30, 'SL': 0.48, '3E': 0.85, 'CC': 0.95, '3A': 1.05, '2A': 1.55, '1A': 2.50 }[cls] || 0.48;
+        var base = (cls === '2S' || cls === 'SL') ? 50 : 100;
+        var f = Math.round((rate * km + base) / 5) * 5;
+        return f > 0 ? f : 0;
+      }
       var list = [];
       if (REF && REF.seqs) {
         for (var i = 0; i < REF.seqs.length && list.length < 40; i++) {
@@ -919,9 +925,12 @@
           }
           if (fi >= 0 && ti > fi) {
             var tr = REF.trains[i];
+            var clsArr = String(tr[6] || 'SL').split(',');
+            var fobj = {};
+            clsArr.forEach(function (c) { fobj[c] = estFare(tr[7] || 0, c); });
             list.push({ no: tr[0], name: tr[1], from: from, to: to,
                         dep: tfmt(parts[fi].split(' ')[1]), arr: tfmt(parts[ti].split(' ')[1]),
-                        classes: String(tr[6] || 'SL').split(','), fares: {}, dist: tr[7] || 0,
+                        classes: clsArr, fares: fobj, dist: tr[7] || 0,
                         note: 'Runs ' + tr[2] + ' \u2192 ' + tr[3] });
           }
         }
@@ -1196,8 +1205,8 @@ function renderResults(trains) {
     '<a class="btn-book" style="margin-left:auto" target="_blank" href="' + s.irctcUrl + '">' + (LANG === 'hi' ? 'LIVE SEARCH IRCTC पर →' : 'LIVE SEARCH ON IRCTC →') + '</a></div>';
   var banner = s.reference
     ? '<div class="warn-box">' + (LANG === 'hi'
-        ? '<b>संदर्भ समय-सारिणी</b> (सार्वजनिक भारतीय रेलवे डेटासेट, 2016) — ट्रेन नंबर और समय बदल सकते हैं। बुकिंग से पहले IRCTC पर पक्का करें।'
-        : '<b>Reference timetable</b> (public Indian Railways dataset, 2016) &mdash; train numbers and timings may have changed. Please confirm on IRCTC before booking.') + '</div>'
+        ? '<b>संदर्भ समय-सारिणी</b> (सार्वजनिक भारतीय रेलवे डेटासेट, 2016) — ट्रेन नंबर और समय बदल सकते हैं। किराया <b>अनुमानित</b> है। बुकिंग से पहले IRCTC पर पक्का करें।'
+        : '<b>Reference timetable</b> (public Indian Railways dataset, 2016) &mdash; train numbers and timings may have changed. Fares shown are <b>indicative estimates</b>. Please confirm everything on IRCTC before booking.') + '</div>'
     : '';
   if (!trains.length) {
     wrap.innerHTML = head + banner + '<div class="card"><div class="empty-state">' +
@@ -1215,22 +1224,26 @@ function trainCard(t, idx) {
   var tabs = t.classes.map(function (c, i) {
     return '<button class="' + (i === 0 ? 'active' : '') + '" onclick="pickCls(this,\'' + c + '\',' + idx + ')">' + c + '</button>';
   }).join('');
-  return '<div class="train-card">' +
+  return '<div class="train-card" data-fares="' + encodeURIComponent(JSON.stringify(t.fares || {})) + '">' +
     '<div class="tc-head"><div><span class="tname">' + t.name + '</span> <span class="tno">(' + t.no + ')</span></div><span class="note">' + t.note + '</span></div>' +
     '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn">' + t.from + '</div></div>' +
     '<div class="dur">' + t.dist + ' km</div>' +
     '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
-    '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया' : 'FARE') + '</small><span id="fare' + idx + '">' + (fare ? ('₹ ' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
+    '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">' + (fare ? ('\u2248 \u20b9' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
     '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK ON IRCTC →' : 'BOOK ON IRCTC →') + '</button></div></div>';
 }
 function pickCls(btn, c, idx) {
   var card = btn.closest('.train-card');
   card.querySelectorAll('.cls-tabs button').forEach(function (b) { b.classList.remove('active'); });
   btn.classList.add('active');
-  var fareEl = card.querySelector('#fare' + idx);
-  if (fareEl) fareEl.textContent = (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC');
+  var fareEl = document.getElementById('fare' + idx);
+  if (fareEl) {
+    var fmap = {};
+    try { fmap = JSON.parse(decodeURIComponent(card.getAttribute('data-fares') || '%7B%7D')); } catch (e) {}
+    fareEl.textContent = fmap[c] ? ('\u2248 \u20b9' + fmap[c] + ' /' + c) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC');
+  }
   var av = card.querySelector('#avail' + idx);
   if (av) av.innerHTML = (LANG === 'hi'
     ? 'चुना गया: <b>' + c + '</b> &nbsp;|&nbsp; सीट उपलब्धता: लाइव सीट नंबर (AVL/WL) IRCTC agent API जुड़ने पर यहीं दिखेंगे।'
