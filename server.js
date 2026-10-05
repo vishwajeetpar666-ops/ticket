@@ -229,6 +229,53 @@ app.use('/api/register', rateLimit('reg', 8, 60 * 60 * 1000));
 app.use('/api/resend-otp', rateLimit('resend', 6, 15 * 60 * 1000));
 app.use('/api/verify-otp', rateLimit('otp', 20, 15 * 60 * 1000));
 app.use('/api/agent', rateLimit('agent', 120, 60 * 1000));
+
+/* ================= PAYMENT GATEWAY (Razorpay) =================
+   Ye sirf tab chalta hai jab RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET env set hon.
+   Key Secret SIRF server par rehti hai - browser mein kabhi nahin jati.
+================================================================ */
+var RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
+var RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
+var PAY_ENABLED = !!(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
+
+app.get('/api/pay/config', function (req, res) {
+  res.json({ enabled: PAY_ENABLED, keyId: PAY_ENABLED ? RAZORPAY_KEY_ID : '', provider: 'Razorpay' });
+});
+
+app.post('/api/pay/order', async function (req, res) {
+  if (!PAY_ENABLED) return res.status(503).json({ error: 'Payment gateway configured nahin hai. Render par RAZORPAY_KEY_ID aur RAZORPAY_KEY_SECRET set karein.' });
+  if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Please log in first.' });
+  var amount = parseInt((req.body && req.body.amount) || '0', 10) || 0;   // paise mein
+  if (amount < 100) amount = 100;                                          // minimum Rs.1
+  if (amount > 5000000) return res.status(400).json({ error: 'Amount bahut zyada hai.' });
+  try {
+    var auth = Buffer.from(RAZORPAY_KEY_ID + ':' + RAZORPAY_KEY_SECRET).toString('base64');
+    var r = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + auth },
+      body: JSON.stringify({ amount: amount, currency: 'INR', receipt: 'rcpt_' + Date.now(), notes: { userId: req.session.userId } })
+    });
+    var d = await r.json();
+    if (!r.ok) return res.status(502).json({ error: (d.error && d.error.description) || 'Order create nahin hua.' });
+    res.json({ ok: true, orderId: d.id, amount: d.amount, keyId: RAZORPAY_KEY_ID });
+  } catch (e) {
+    res.status(500).json({ error: 'Payment server error. Thodi der baad try karein.' });
+  }
+});
+
+app.post('/api/pay/verify', function (req, res) {
+  if (!PAY_ENABLED) return res.status(503).json({ error: 'Payment gateway configured nahin hai.' });
+  var b = req.body || {};
+  if (!b.razorpay_order_id || !b.razorpay_payment_id || !b.razorpay_signature) {
+    return res.status(400).json({ error: 'Payment details adhoori hain.' });
+  }
+  var expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET)
+    .update(String(b.razorpay_order_id) + '|' + String(b.razorpay_payment_id)).digest('hex');
+  if (expected !== String(b.razorpay_signature)) {
+    return res.status(400).json({ error: 'Payment verify nahin hui (signature galat).' });
+  }
+  res.json({ ok: true, message: 'Payment verified.', paymentId: b.razorpay_payment_id });
+});
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
