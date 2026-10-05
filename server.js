@@ -72,7 +72,7 @@ const OTP_DEV_MODE = !(SMS_OK || MAIL_OK);
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'db.json');
-let db = { users: [], passengers: [], otps: {} };
+let db = { users: [], passengers: [], otps: {}, employees: [] };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))); } catch (e) {}
 function saveDb() {
   const tmp = DB_FILE + '.tmp';
@@ -283,8 +283,22 @@ app.use(session({
   cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 /* serve frontend + station data from memory (no public folder needed) */
-app.get('/', function (req, res) { res.set('Content-Type', 'text/html; charset=utf-8'); res.send(INDEX_HTML); });
-app.get('/stations.json', function (req, res) { res.set('Content-Type', 'application/json; charset=utf-8'); res.send(STATIONS_JSON_TEXT); });
+app.get('/', function (req, res) {
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  try {
+    var pubFile = path.join(__dirname, 'public', 'index.html');
+    if (fs.existsSync(pubFile)) return res.send(fs.readFileSync(pubFile, 'utf-8'));
+  } catch (e) {}
+  res.send(INDEX_HTML);
+});
+app.get('/stations.json', function (req, res) {
+  res.set('Content-Type', 'application/json; charset=utf-8');
+  try {
+    var stFile = path.join(__dirname, 'public', 'stations.json');
+    if (fs.existsSync(stFile)) return res.send(fs.readFileSync(stFile, 'utf-8'));
+  } catch (e) {}
+  res.send(STATIONS_JSON_TEXT);
+});
 
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'Please log in first.' });
@@ -430,6 +444,62 @@ app.delete('/api/passengers/:id', requireAuth, (req, res) => {
   res.json({ ok: true, deleted: before !== db.passengers.length });
 });
 
+app.post('/api/passengers/:id/clear-id', requireAuth, (req, res) => {
+  let found = false;
+  db.passengers.forEach(p => {
+    if (p.id === req.params.id && p.userId === req.session.user.id) { p.idType = ''; p.idMasked = ''; found = true; }
+  });
+  saveDb();
+  res.json({ ok: true, cleared: found });
+});
+
+app.post('/api/agent/clear-id', requireAgent, (req, res) => {
+  const uname = String((req.body || {}).username || '').trim().toLowerCase();
+  const u = db.users.find(x => x.username === uname);
+  if (!u) return res.status(404).json({ error: 'Customer not found.' });
+  u.idType = ''; u.idMasked = ''; u.idNumber = '';
+  saveDb();
+  res.json({ ok: true });
+});
+
+/* ---------------- EMPLOYEES / SUB-AGENTS ---------------- */
+app.get('/api/agent/employees', requireAgent, (req, res) => {
+  res.json({
+    employees: (db.employees || []).map(e => ({ id: e.id, name: e.name, username: e.username, mobile: e.mobile, share: e.share, created: e.created }))
+  });
+});
+
+app.post('/api/agent/employees', requireAgent, (req, res) => {
+  const b = req.body || {};
+  const name = String(b.name || '').trim();
+  const uname = String(b.username || '').trim().toLowerCase();
+  const mob = String(b.mobile || '').trim();
+  const pw = String(b.password || '');
+  const share = parseInt(b.share || '0', 10) || 0;
+  if (name.length < 2) return res.status(400).json({ error: 'Employee ka naam likhein.' });
+  if (!/^[a-z0-9_]{3,20}$/.test(uname)) return res.status(400).json({ error: 'Username 3-20 characters (a-z, 0-9, _).' });
+  if (pw.length < 6) return res.status(400).json({ error: 'Password kam se kam 6 characters.' });
+  if (db.users.find(u => u.username === uname)) return res.status(409).json({ error: 'Ye username already liya ja chuka hai.' });
+  const id = newId();
+  db.users.push({
+    id: id, role: 'employee', name: name, username: uname, mobile: mob, email: '',
+    passHash: bcrypt.hashSync(pw, 10), verified: true, created: new Date().toISOString()
+  });
+  db.employees = db.employees || [];
+  const rec = { id: id, name: name, username: uname, mobile: mob, share: share, created: new Date().toISOString() };
+  db.employees.push(rec);
+  saveDb();
+  res.json({ ok: true, employee: rec });
+});
+
+app.delete('/api/agent/employees/:id', requireAgent, (req, res) => {
+  const id = req.params.id;
+  db.employees = (db.employees || []).filter(e => e.id !== id);
+  db.users = db.users.filter(u => u.id !== id);
+  saveDb();
+  res.json({ ok: true });
+});
+
 /* ---------------- TRAINS API ---------------- */
 app.get('/api/trains', requireAuth, (req, res) => {
   const from = String(req.query.from || '').toUpperCase();
@@ -453,7 +523,7 @@ app.get('/api/agent/customers', requireAgent, (req, res) => {
     .filter(u => u.role === 'customer')
     .map(u => ({
       name: u.name, username: u.username, mobile: u.mobile, email: u.email,
-      verified: u.verified,
+      verified: u.verified, idType: u.idType || '', idMasked: u.idMasked || '',
       passengers: db.passengers.filter(p => p.userId === u.id).length,
       created: u.created
     }));
