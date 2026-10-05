@@ -1390,9 +1390,19 @@ async function kitRender() {
       (sel.length ? sel.map(function (p, i) {
         return '<div class="pax-row"><b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + ' | ' + p.food + '</span></div>';
       }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'कोई यात्री नहीं चुना।' : 'No passenger selected.') + '</div>') + '</div>' +
-      '<div class="warn-box">' + (LANG === 'hi'
-        ? 'किराया: IRCTC पर दिखेगा | आपका सर्विस चार्ज: <b>Rs.' + charge + ' प्रति टिकट</b> | IRCTC convenience fee अलग।'
-        : 'Fare: shown on IRCTC | Your service charge: <b>Rs.' + charge + ' per ticket</b> | IRCTC convenience fee extra.') + '</div>';
+      (function () {
+        var f = (kitTrain.fares && kitTrain.fares[kitCls]) || 0;
+        var n = sel.length || 1;
+        var fareTotal = f * n, chgTotal = charge * n, grand = fareTotal + chgTotal;
+        return '<div class="card" style="box-shadow:none;margin-top:8px"><div class="card-b">' +
+          '<div class="pax-row"><b>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'Fare (indicative)') + '</b><span class="note">Rs.' + f + ' &times; ' + n + ' = <b>Rs.' + fareTotal + '</b></span></div>' +
+          '<div class="pax-row"><b>' + (LANG === 'hi' ? 'आपका सर्विस चार्ज' : 'Your service charge') + '</b><span class="note">Rs.' + charge + ' &times; ' + n + ' = <b>Rs.' + chgTotal + '</b></span></div>' +
+          '<div class="pax-row" style="border-top:1px solid var(--border)"><b>' + (LANG === 'hi' ? 'अनुमानित कुल' : 'Estimated total') + '</b><span class="note" style="font-size:15px;color:#ff9a4d"><b>Rs.' + grand + '</b></span></div>' +
+          '</div></div>' +
+          '<div class="warn-box">' + (LANG === 'hi'
+            ? 'असली किराया और IRCTC convenience fee IRCTC पर ही confirm होंगे - यह केवल अनुमान है।'
+            : 'Actual fare and IRCTC convenience fee are confirmed on IRCTC only - this is just an estimate.') + '</div>';
+      })();
     foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
       '<button class="btn-book" onclick="kitNext()">' + (LANG === 'hi' ? 'आगे: कन्फर्म →' : 'NEXT: CONFIRM →') + '</button>';
   } else if (kitStep === 3) {
@@ -1415,7 +1425,8 @@ async function kitRender() {
     body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
       '<div class="pax-row"><b>Passengers</b><span class="note">' + sel4.length + ' selected</span></div>' +
       '<div class="pax-row"><b>Ticket fare</b><span class="note">' + (LANG === 'hi' ? 'IRCTC पर (asli fare wahi hai)' : 'On IRCTC (the real fare)') + '</span></div>' +
-      '<div class="pax-row"><b>' + (LANG === 'hi' ? 'आपका सर्विस चार्ज' : 'Your service charge') + '</b><span class="note">Rs.' + charge + ' per ticket</span></div>' +
+      '<div class="pax-row"><b>' + (LANG === 'hi' ? 'आपका सर्विस चार्ज' : 'Your service charge') + '</b><span class="note">Rs.' + charge + ' &times; ' + (sel4.length || 1) + ' = <b>Rs.' + (charge * (sel4.length || 1)) + '</b></span></div>' +
+      '<div class="pax-row" style="border-top:1px solid var(--border)"><b>' + (LANG === 'hi' ? 'अनुमानित कुल (किराया + चार्ज)' : 'Estimated total (fare + charge)') + '</b><span class="note" style="font-size:15px;color:#ff9a4d"><b>Rs.' + (((kitTrain.fares && kitTrain.fares[kitCls]) || 0) * (sel4.length || 1) + charge * (sel4.length || 1)) + '</b></span></div>' +
       '<div style="margin:12px 0"><b>' + (LANG === 'hi' ? 'पेमेंट का तरीका' : 'Payment method') + '</b>' +
       '<div class="pax-row"><input type="radio" name="paym" checked> UPI / QR &nbsp; <input type="radio" name="paym"> Debit / Credit Card &nbsp; <input type="radio" name="paym"> Net Banking</div></div>' +
       (payReady
