@@ -492,6 +492,7 @@
     <div class="nav-inner">
       <button id="nv-trains" class="active" onclick="showView('trains')" data-en="TRAIN SEARCH" data-hi="ट्रेन सर्च">TRAIN SEARCH</button>
       <button id="nv-quick" onclick="showView('quick')" data-en="PASSENGER MASTER LIST" data-hi="पैसेंजर मास्टर लिस्ट">PASSENGER MASTER LIST</button>
+      <button id="nv-help" onclick="showView('help')" data-en="HELP &amp; RULES" data-hi="मदद और नियम">HELP &amp; RULES</button>
       <button id="nv-agent" class="hidden" onclick="showView('agent')" data-en="AGENT PANEL" data-hi="एजेंट पैनल">AGENT PANEL</button>
       <button id="nv-settings" class="hidden" onclick="showView('settings')" data-en="INTEGRATIONS" data-hi="इंटीग्रेशन">INTEGRATIONS</button>
       <button id="nv-ai" class="hidden" onclick="showView('ai')" data-en="AI ASSISTANT" data-hi="AI असिस्टेंट">AI ASSISTANT</button>
@@ -691,6 +692,43 @@
             <input id="aiInput" placeholder="Poochho: 'Ludhiana se Prayagraj ke trains batao'...">
             <button class="btn-search" onclick="askAi()">ASK AI</button>
           </div>
+        </div>
+      </div>
+    </section>
+    <section id="view-help" class="hidden">
+      <div class="card">
+        <div class="card-h" data-en="HOW TO BOOK - 4 STEPS" data-hi="बुकिंग कैसे करें - 4 स्टेप">HOW TO BOOK - 4 STEPS</div>
+        <div class="card-b">
+          <div class="pax-row"><b>1. Passenger Master List</b><span class="note">Apne sabhi yatri ek baar save karo - naam (ID ke anusaar), umar, gender, berth, khana. Baar-baar kaam khatam.</span></div>
+          <div class="pax-row"><b>2. Train search</b><span class="note">From/To station chuno (13,000+ stations) aur date. Results par sort aur class filter laga sakte ho.</span></div>
+          <div class="pax-row"><b>3. Book (4 steps)</b><span class="note">Passengers chuno &rarr; Review &rarr; Confirm (IRCTC username + ID proof) &rarr; Payment.</span></div>
+          <div class="pax-row"><b>4. Confirm ticket</b><span class="note">Tatkal mein seconds bachane ke liye passengers COPY karke IRCTC form mein paste karo. Ticket IRCTC ke system se banta hai.</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="TATKAL RULES (REMEMBER)" data-hi="तत्काल के नियम (याद रखें)">TATKAL RULES (REMEMBER)</div>
+        <div class="card-b">
+          <div class="pax-row"><b>Timing</b><span class="note">AC classes (1A/2A/3A/3E/CC) - 10:00 AM &bull; Sleeper / 2S - 11:00 AM &bull; yatra se ek din pehle (source station se).</span></div>
+          <div class="pax-row"><b>ID proof</b><span class="note">Tatkal mein har yatri ka ID proof zaroori hai - naam ticket aur ID par match karna chahiye.</span></div>
+          <div class="pax-row"><b>Speed trick</b><span class="note">Pehle se login + passenger list ready rakho, 10:00 baje turant book karo. Yahi sabse bada fayda hai.</span></div>
+          <div class="pax-row"><b>Refund</b><span class="note">Tatkal cancellation ke charges alag hote hain; TDR (refund) IRCTC par file hota hai. Niyam IRCTC par confirm karein.</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="ID PROOF FOR TRAVEL" data-hi="यात्रा के लिए आईडी प्रूफ">ID PROOF FOR TRAVEL</div>
+        <div class="card-b">
+          <div class="pax-row"><b>Indian passengers</b><span class="note">Original Aadhaar / PAN card / Driving Licence / Passport / Voter ID - koi bhi ek (original).</span></div>
+          <div class="pax-row"><b>Foreign nationals</b><span class="note">Original Passport zaroori.</span></div>
+          <div class="pax-row"><b>Dhyan rakhein</b><span class="note">Ticket par naam aur ID par naam match karna chahiye - warna jurmana ho sakta hai. Document verification sirf official government / IRCTC systems par hoti hai.</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h" data-en="IMPORTANT - PLEASE READ" data-hi="ज़रूरी - कृपया पढ़ें">IMPORTANT - PLEASE READ</div>
+        <div class="card-b">
+          <div class="warn-box" data-html="1">Is portal par train number, timing aur <b>indicative</b> fare public Indian Railways dataset se aate hain - ye badal sakte hain. <b>Live seat availability, asli ticket aur payment IRCTC ke system se hote hain.</b> Har result par "BOOK / LIVE SEARCH ON IRCTC" button se official IRCTC site khulti hai. <b>Asli ticket sirf IRCTC se hi banta hai</b> - is portal se koi ticket generate nahin hota.</div>
         </div>
       </div>
     </section>
@@ -1160,7 +1198,7 @@ function enterApp(user) {
   showView('trains');
 }
 function showView(v) {
-  ['trains', 'quick', 'agent', 'settings', 'ai'].forEach(function (x) {
+  ['trains', 'quick', 'agent', 'settings', 'ai', 'help'].forEach(function (x) {
     var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
     var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
   });
