@@ -344,6 +344,11 @@
 
   .avail-note{font-size:11.5px;color:#aab8cf;padding:7px 14px;border-top:1px solid var(--border);}
   .avail-note b{color:#ff9a4d;}
+
+  .toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;padding:8px 10px;background:#0f141f;border:1px solid var(--border);border-radius:10px;}
+  .toolbar .tb-label{font-size:11px;color:#aab8cf;font-weight:700;}
+  .toolbar button{background:#161d2b;border:1px solid var(--border);color:#c9d4e6;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;}
+  .toolbar button.active{background:rgba(249,115,22,.15);color:#ff9a4d;border-color:#f97316;}
 </style>
 </head>
 <body>
@@ -1198,26 +1203,41 @@ async function runSearch() {
     renderResults(r.trains);
   } catch (e) { showMsg('searchMsg', e.message, false); }
 }
+var lastResults = [], displayedResults = [], sortMode = 'dep', filterCls = '';
 function renderResults(trains) {
+  if (trains) lastResults = trains.slice();
   var wrap = document.getElementById('resultsWrap');
   var s = currentSearch;
-  var head = '<div class="results-head"><span class="cnt">' + trains.length + (LANG === 'hi' ? ' परिणाम' : ' Results') + ': ' + s.from + ' &rarr; ' + s.to + ' | ' + fmtDate(new Date(s.date)) + '</span>' +
+  var list = lastResults.slice();
+  if (filterCls) list = list.filter(function (t) { return (t.classes || []).indexOf(filterCls) >= 0; });
+  if (sortMode === 'dep') list.sort(function (a, b) { return String(a.dep || '').localeCompare(String(b.dep || '')); });
+  else if (sortMode === 'no') list.sort(function (a, b) { return String(a.no).localeCompare(String(b.no)); });
+  else if (sortMode === 'dist') list.sort(function (a, b) { return (b.dist || 0) - (a.dist || 0); });
+  displayedResults = list;
+  var head = '<div class="results-head"><span class="cnt">' + list.length + (LANG === 'hi' ? ' परिणाम' : ' Results') + ': ' + s.from + ' &rarr; ' + s.to + ' | ' + fmtDate(new Date(s.date)) + '</span>' +
     '<a class="btn-book" style="margin-left:auto" target="_blank" href="' + s.irctcUrl + '">' + (LANG === 'hi' ? 'LIVE SEARCH IRCTC पर →' : 'LIVE SEARCH ON IRCTC →') + '</a></div>';
   var banner = s.reference
     ? '<div class="warn-box">' + (LANG === 'hi'
         ? '<b>संदर्भ समय-सारिणी</b> (सार्वजनिक भारतीय रेलवे डेटासेट, 2016) — ट्रेन नंबर और समय बदल सकते हैं। किराया <b>अनुमानित</b> है। बुकिंग से पहले IRCTC पर पक्का करें।'
         : '<b>Reference timetable</b> (public Indian Railways dataset, 2016) &mdash; train numbers and timings may have changed. Fares shown are <b>indicative estimates</b>. Please confirm everything on IRCTC before booking.') + '</div>'
     : '';
-  if (!trains.length) {
-    wrap.innerHTML = head + banner + '<div class="card"><div class="empty-state">' +
-      (LANG === 'hi'
-        ? 'इस रूट के लिए संदर्भ डेटा में कोई ट्रेन नहीं मिली। सारी लाइव ट्रेनें IRCTC पर देखें - ऊपर वाला बटन दबाएं।'
-        : 'No trains found for this route in the reference data. See all live trains on IRCTC with the button above.') +
+  var sorts = [['dep', LANG === 'hi' ? 'समय' : 'Departure'], ['no', LANG === 'hi' ? 'ट्रेन नं.' : 'Train no.'], ['dist', LANG === 'hi' ? 'दूरी' : 'Distance']];
+  var classes = ['', 'SL', '3A', '2A', '1A', 'CC', '2S'];
+  var tool = '<div class="toolbar"><span class="tb-label">' + (LANG === 'hi' ? 'क्रम' : 'Sort') + ':</span>' +
+    sorts.map(function (x) { return '<button class="' + (sortMode === x[0] ? 'active' : '') + '" onclick="setSort(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') +
+    '<span class="tb-label" style="margin-left:14px">' + (LANG === 'hi' ? 'श्रेणी' : 'Class') + ':</span>' +
+    classes.map(function (c) { return '<button class="' + (filterCls === c ? 'active' : '') + '" onclick="setClsFilter(\'' + c + '\')">' + (c || (LANG === 'hi' ? 'सभी' : 'All')) + '</button>'; }).join('') +
+    '</div>';
+  if (!list.length) {
+    wrap.innerHTML = head + banner + tool + '<div class="card"><div class="empty-state">' +
+      (LANG === 'hi' ? 'इस फ़िल्टर में कोई ट्रेन नहीं मिली। फ़िल्टर बदलें या IRCTC पर देखें।' : 'No trains match this filter. Change the filter or check IRCTC.') +
       '</div></div>';
     return;
   }
-  wrap.innerHTML = head + banner + trains.map(function (t, i) { return trainCard(t, i); }).join('');
+  wrap.innerHTML = head + banner + tool + list.map(function (t, i) { return trainCard(t, i); }).join('');
 }
+function setSort(m) { sortMode = m; renderResults(null); }
+function setClsFilter(c) { filterCls = c; renderResults(null); }
 function trainCard(t, idx) {
   var cls = t.classes[0];
   var fare = t.fares[cls] || '';
@@ -1254,8 +1274,7 @@ function pickCls(btn, c, idx) {
 var kitTrain = null;
 var kitStep = 1, kitCls = '', kitPaxSel = [];
 async function openKit(idx) {
-  var r = await api('/api/trains?from=' + currentSearch.from + '&to=' + currentSearch.to);
-  kitTrain = r.trains[idx];
+  kitTrain = (displayedResults && displayedResults[idx]) ? displayedResults[idx] : null;
   if (!kitTrain) return;
   var activeCls = document.querySelector('#resultsWrap .train-card:nth-child(' + (idx + 1) + ') .cls-tabs button.active');
   kitCls = activeCls ? activeCls.textContent : kitTrain.classes[0];
