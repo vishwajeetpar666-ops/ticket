@@ -601,6 +601,46 @@ app.get('/api/schedule', requireAuth, (req, res) => {
   res.json({ train: { no: tr[0], name: tr[1], src: tr[2], dst: tr[3], dep: tr[4], arr: tr[5], classes: String(tr[6] || 'SL').split(','), dist: tr[7] }, stops: stops });
 });
 
+function findViaRoutes(REF, A, B, maxHubs) {
+  function ft(s) { return (s && s.length === 4) ? s.slice(0, 2) + ':' + s.slice(2) : '--:--'; }
+  var after = {}, before = {};
+  for (var i = 0; i < REF.seqs.length; i++) {
+    var parts = String(REF.seqs[i]).split(',');
+    var codes = [], times = [];
+    for (var q = 0; q < parts.length; q++) { var b2 = parts[q].split(' '); codes.push(b2[0]); times.push(b2[1] || ''); }
+    var ai = codes.indexOf(A);
+    if (ai >= 0) { for (var j = ai + 1; j < codes.length; j++) { if (!after[codes[j]]) after[codes[j]] = { i: i, time: times[j] }; } }
+    var bi = codes.indexOf(B);
+    if (bi >= 0) { for (var j2 = 0; j2 < bi; j2++) { if (!before[codes[j2]]) before[codes[j2]] = { i: i, time: times[j2] }; } }
+  }
+  var hubs = [];
+  for (var h in after) { if (before[h] && h !== A && h !== B) hubs.push(h); }
+  var out = [];
+  for (var k = 0; k < hubs.length && out.length < maxHubs; k++) {
+    var hub = hubs[k], e1 = after[hub], e2 = before[hub];
+    var t1 = REF.trains[e1.i], t2 = REF.trains[e2.i];
+    var p1 = String(REF.seqs[e1.i]).split(','), p2 = String(REF.seqs[e2.i]).split(',');
+    var a2 = -1, b3 = -1;
+    for (var z = 0; z < p1.length; z++) { if (p1[z].split(' ')[0] === A) { a2 = z; break; } }
+    for (var z2 = 0; z2 < p2.length; z2++) { if (p2[z2].split(' ')[0] === B) { b3 = z2; break; } }
+    out.push({
+      hub: hub,
+      t1: { no: t1[0], name: t1[1], dep: ft(a2 >= 0 ? p1[a2].split(' ')[1] : ''), arr: ft(e1.time) },
+      t2: { no: t2[0], name: t2[1], dep: ft(e2.time), arr: ft(b3 >= 0 ? p2[b3].split(' ')[1] : '') }
+    });
+  }
+  return out;
+}
+
+app.get('/api/via', requireAuth, (req, res) => {
+  const from = String(req.query.from || '').toUpperCase();
+  const to = String(req.query.to || '').toUpperCase();
+  if (!from || !to) return res.status(400).json({ error: 'From/To chahiye.' });
+  var F = loadFullData();
+  if (!F || !F.seqs) return res.status(503).json({ error: 'Data load ho raha hai - thodi der baad try karein.' });
+  res.json({ routes: findViaRoutes(F, from, to, 6) });
+});
+
 app.get('/api/station', requireAuth, (req, res) => {
   const code = String(req.query.code || '').trim().toUpperCase();
   if (!code) return res.status(400).json({ error: 'Station code daalein.' });
