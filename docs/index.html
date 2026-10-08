@@ -518,6 +518,10 @@
               <div class="sub" data-en="Slot opens at 11:00 AM" data-hi="स्लॉट सुबह 11:00 बजे खुलता है">Slot opens at 11:00 AM</div>
             </div>
           </div>
+          <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <button class="btn-grey" id="alarmBtn" onclick="toggleAlarm()">&#128276; SET TATKAL ALARM</button>
+            <span class="note">Alarm ON karne par - slot khulne se <b>5 minute</b> pehle, <b>1 minute</b> pehle, aur slot khulte hi - <b>beep + notification</b> milega. (Browser notification ki permission maangega.)</span>
+          </div>
         </div>
       </div>
 
@@ -1907,6 +1911,54 @@ async function callAi(s, q) {
   return (ch.message || {}).content || 'No reply';
 }
 
+/* ================= TATKAL ALARM ================= */
+var alarmOn = false, alarmFired = {};
+try { alarmOn = localStorage.getItem('vpr_alarm') === '1'; } catch (e) {}
+function toggleAlarm() {
+  alarmOn = !alarmOn;
+  try { localStorage.setItem('vpr_alarm', alarmOn ? '1' : '0'); } catch (e) {}
+  if (alarmOn && 'Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+  updateAlarmBtn();
+  toast(alarmOn ? (LANG === 'hi' ? 'Tatkal alarm ON' : 'Tatkal alarm ON') : (LANG === 'hi' ? 'Tatkal alarm OFF' : 'Tatkal alarm OFF'));
+}
+function updateAlarmBtn() {
+  var b = document.getElementById('alarmBtn');
+  if (b) b.innerHTML = alarmOn ? '&#128276; ALARM ON' : '&#128277; SET TATKAL ALARM';
+}
+function beep() {
+  try {
+    var C = window.AudioContext || window.webkitAudioContext;
+    var c = new C();
+    var o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.18;
+    o.start();
+    setTimeout(function () { try { o.stop(); c.close(); } catch (e) {} }, 900);
+  } catch (e) {}
+}
+function fireAlarm(msg) {
+  beep();
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification('Tatkal slot alert', { body: msg }); } catch (e) {}
+  }
+  toast(msg);
+}
+function checkAlarm(target, now, tag) {
+  if (!alarmOn) return;
+  var s = target - now; if (s < 0) s += 86400;
+  var day = new Date().toDateString();
+  [300, 60, 0].forEach(function (m) {
+    var key = tag + '_' + m + '_' + day;
+    if (s <= m && s > m - 5 && !alarmFired[key]) {
+      alarmFired[key] = true;
+      var cls = (tag === 'AC' ? 'AC tatkal' : 'Sleeper/2S tatkal');
+      fireAlarm(m ? (cls + ' slot ' + (m / 60) + ' minute mein khulega!') : (cls + ' slot AB KHUL GAYA - book karo!'));
+    }
+  });
+}
+
 /* ================= clock + timer ================= */
 function tickClock() {
   var d = new Date();
@@ -1919,6 +1971,8 @@ function tickClock() {
   }
   document.getElementById('timerAC').textContent = until(36000);
   document.getElementById('timerSL').textContent = until(39600);
+  checkAlarm(36000, now, 'AC');
+  checkAlarm(39600, now, 'SL');
 }
 setInterval(tickClock, 1000); tickClock();
 
@@ -1930,6 +1984,7 @@ document.getElementById('agPass').addEventListener('keydown', function (e) { if 
 /* ================= init ================= */
 applyLang();
 applyTheme();
+updateAlarmBtn();
 loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
