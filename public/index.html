@@ -1497,6 +1497,7 @@ function renderResults(trains) {
   if (sortMode === 'dep') list.sort(function (a, b) { return String(a.dep || '').localeCompare(String(b.dep || '')); });
   else if (sortMode === 'no') list.sort(function (a, b) { return String(a.no).localeCompare(String(b.no)); });
   else if (sortMode === 'dist') list.sort(function (a, b) { return (b.dist || 0) - (a.dist || 0); });
+  else if (sortMode === 'dur') list.sort(function (a, b) { return durMins(a.dep, a.arr) - durMins(b.dep, b.arr); });
   displayedResults = list;
   var head = '<div class="results-head"><span class="cnt">' + list.length + (LANG === 'hi' ? ' परिणाम' : ' Results') + ': ' + s.from + ' &rarr; ' + s.to + ' | ' + fmtDate(new Date(s.date)) + '</span>' +
     '<a class="btn-book" style="margin-left:auto" target="_blank" href="' + s.irctcUrl + '">' + (LANG === 'hi' ? 'LIVE SEARCH IRCTC पर →' : 'LIVE SEARCH ON IRCTC →') + '</a></div>';
@@ -1505,7 +1506,7 @@ function renderResults(trains) {
         ? '<b>संदर्भ समय-सारिणी</b> (सार्वजनिक भारतीय रेलवे डेटासेट, 2016) — ट्रेन नंबर और समय बदल सकते हैं। किराया <b>अनुमानित</b> है। बुकिंग से पहले IRCTC पर पक्का करें।'
         : '<b>Reference timetable</b> (public Indian Railways dataset, 2016) &mdash; train numbers and timings may have changed. Fares shown are <b>indicative estimates</b>. Please confirm everything on IRCTC before booking.') + '</div>'
     : '';
-  var sorts = [['dep', LANG === 'hi' ? 'समय' : 'Departure'], ['no', LANG === 'hi' ? 'ट्रेन नं.' : 'Train no.'], ['dist', LANG === 'hi' ? 'दूरी' : 'Distance']];
+  var sorts = [['dep', LANG === 'hi' ? 'समय' : 'Departure'], ['dur', LANG === 'hi' ? 'अवधि' : 'Duration'], ['no', LANG === 'hi' ? 'ट्रेन नं.' : 'Train no.'], ['dist', LANG === 'hi' ? 'दूरी' : 'Distance']];
   var classes = ['', 'SL', '3A', '2A', '1A', 'CC', '2S'];
   var tool = '<div class="toolbar"><span class="tb-label">' + (LANG === 'hi' ? 'क्रम' : 'Sort') + ':</span>' +
     sorts.map(function (x) { return '<button class="' + (sortMode === x[0] ? 'active' : '') + '" onclick="setSort(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') +
@@ -1524,6 +1525,18 @@ function renderResults(trains) {
 }
 function setSort(m) { sortMode = m; renderResults(null); }
 function setClsFilter(c) { filterCls = c; renderResults(null); }
+function durMins(dep, arr) {
+  if (!dep || !arr || dep === '--:--' || arr === '--:--') return 0;
+  var d = String(dep).split(':'), a = String(arr).split(':');
+  var m1 = (+d[0]) * 60 + (+d[1]), m2 = (+a[0]) * 60 + (+a[1]);
+  var diff = m2 - m1; if (diff <= 0) diff += 1440;
+  return diff;
+}
+function fmtDur(mins) {
+  if (!mins) return '';
+  var hh = Math.floor(mins / 60), mm = mins % 60;
+  return hh + 'h' + (mm ? ' ' + mm + 'm' : '');
+}
 function trainCard(t, idx) {
   var cls = t.classes[0];
   var fare = t.fares[cls] || '';
@@ -1533,7 +1546,7 @@ function trainCard(t, idx) {
   return '<div class="train-card" data-fares="' + encodeURIComponent(JSON.stringify(t.fares || {})) + '">' +
     '<div class="tc-head"><div><span class="tname">' + t.name + '</span> <span class="tno">(' + t.no + ')</span></div><span class="note">' + t.note + '</span></div>' +
     '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn">' + t.from + '</div></div>' +
-    '<div class="dur">' + t.dist + ' km</div>' +
+    '<div class="dur">' + t.dist + ' km' + (durMins(t.dep, t.arr) ? '<br>' + fmtDur(durMins(t.dep, t.arr)) : '') + '</div>' +
     '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
