@@ -628,6 +628,32 @@
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-h" data-en="BOOKING RECORD / COMMISSION LEDGER" data-hi="बुकिंग रिकॉर्ड / कमीशन लेजर">BOOKING RECORD / COMMISSION LEDGER</div>
+        <div class="card-b">
+          <div class="note">Har booking yahan record karo - PNR, yatri, aur apna commission. Total apne aap jud jaayega. (Ye aapka hisaab-kitaab hai.)</div>
+          <div class="form-row" style="grid-template-columns:130px 1.4fr 1fr 80px 110px auto">
+            <div><div class="cap">DATE</div><input type="date" id="bkDate"></div>
+            <div><div class="cap">TRAIN</div><input id="bkTrain" placeholder="e.g. 18102 JAT TATA EXP"></div>
+            <div><div class="cap">PNR</div><input id="bkPnr" placeholder="PNR number"></div>
+            <div><div class="cap">PAX</div><input id="bkPax" type="number" value="1" min="1"></div>
+            <div><div class="cap">COMM (Rs.)</div><input id="bkComm" type="number" value="5" min="0"></div>
+            <button class="btn-search" style="height:38px" onclick="addBooking()">+ ADD</button>
+          </div>
+          <div class="stat-grid" style="margin-top:10px">
+            <div class="stat-box"><div class="v" id="bkTotal">0</div><div class="k" data-en="Total Bookings" data-hi="कुल बुकिंग">Total Bookings</div></div>
+            <div class="stat-box"><div class="v" id="bkPaxTotal">0</div><div class="k" data-en="Total Passengers" data-hi="कुल यात्री">Total Passengers</div></div>
+            <div class="stat-box"><div class="v" id="bkCommTotal">0</div><div class="k" data-en="Total Commission (Rs.)" data-hi="कुल कमीशन (Rs.)">Total Commission (Rs.)</div></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="plist" id="bkTable">
+              <thead><tr><th>#</th><th>Date</th><th>Train</th><th>PNR</th><th>Pax</th><th>Comm (Rs.)</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
     <section id="view-settings" class="hidden">
       <div id="pinGate" class="card hidden">
@@ -984,6 +1010,25 @@
       return jsonResp({ ok: true, cleared: found });
     }
 
+    if (path === '/api/agent/bookings') {
+      if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
+      var bks = load('vpr_bookings', []);
+      if (method === 'GET') return jsonResp({ bookings: bks });
+      if (method === 'POST') {
+        var nb = { id: uid(), date: String(body.date || '').slice(0, 20), train: String(body.train || '').toUpperCase().slice(0, 60),
+                   pnr: String(body.pnr || '').slice(0, 20), pax: parseInt(body.pax || '1', 10) || 1,
+                   commission: parseInt(body.commission || '5', 10) || 0, created: new Date().toISOString() };
+        bks.push(nb); save('vpr_bookings', bks);
+        return jsonResp({ ok: true, booking: nb });
+      }
+    }
+    if (path.indexOf('/api/agent/bookings/') === 0 && method === 'DELETE') {
+      if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
+      var bid = path.split('/').pop();
+      save('vpr_bookings', load('vpr_bookings', []).filter(function (b) { return b.id !== bid; }));
+      return jsonResp({ ok: true });
+    }
+
     if (path === '/api/agent/employees') {
       if (!session || session.role !== 'agent') return jsonResp({ error: 'Agent access only.' }, 403);
       var emps = load('vpr_employees', []);
@@ -1246,6 +1291,7 @@ function enterApp(user) {
   prefillDefaults();
   if (isAgent) loadAgent();
   if (isAgent) loadEmployees();
+  if (isAgent) loadBookings();
   resetIdle();
   showView('trains');
 }
@@ -1602,6 +1648,41 @@ async function addPassenger() {
     loadPassengers();
     toast(LANG === 'hi' ? 'यात्री सेव हो गया' : 'Passenger saved');
   } catch (e) { toast(e.message); }
+}
+async function loadBookings() {
+  try {
+    var r = await api('/api/agent/bookings');
+    var list = r.bookings || [];
+    var tb = document.querySelector('#bkTable tbody');
+    if (tb) tb.innerHTML = list.length ? list.map(function (b, i) {
+      return '<tr><td>' + (i + 1) + '</td><td>' + (b.date || '-') + '</td><td>' + (b.train || '-') + '</td><td>' + (b.pnr || '-') +
+        '</td><td>' + (b.pax || 0) + '</td><td>' + (b.commission || 0) + '</td>' +
+        '<td><button class="btn-sm red" onclick="delBooking(\'' + b.id + '\')">Delete</button></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="note" style="padding:16px">Abhi koi booking record nahin. Upar form se add karo.</td></tr>';
+    var t = { b: 0, p: 0, c: 0 };
+    list.forEach(function (b) { t.b++; t.p += (+b.pax || 0); t.c += (+b.commission || 0); });
+    var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+    set('bkTotal', t.b); set('bkPaxTotal', t.p); set('bkCommTotal', t.c);
+  } catch (e) {}
+}
+async function addBooking() {
+  var g = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  var body = {
+    date: g('bkDate') || new Date().toISOString().slice(0, 10),
+    train: g('bkTrain'), pnr: g('bkPnr'),
+    pax: g('bkPax') || 1, commission: g('bkComm') || 5
+  };
+  if (!String(body.train).trim()) { toast('Train likho (e.g. 18102 JAT TATA EXP)'); return; }
+  try {
+    await api('/api/agent/bookings', { method: 'POST', body: JSON.stringify(body) });
+    document.getElementById('bkTrain').value = ''; document.getElementById('bkPnr').value = '';
+    loadBookings();
+    toast('Booking record add ho gaya');
+  } catch (e) { toast(e.message); }
+}
+async function delBooking(id) {
+  if (!confirm('Ye booking record delete karna hai?')) return;
+  try { await api('/api/agent/bookings/' + id, { method: 'DELETE' }); loadBookings(); toast('Deleted'); } catch (e) { toast(e.message); }
 }
 async function loadEmployees() {
   try {
