@@ -193,7 +193,7 @@ app.use(function (req, res, next) {
     "default-src 'self'",
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
     "connect-src 'self' https://api.razorpay.com https://api.cashfree.com https://generativelanguage.googleapis.com https://api.openai.com https://api.x.ai https://api.sarvam.ai",
     "frame-src https://api.razorpay.com https://checkout.razorpay.com",
     "frame-ancestors 'none'"
@@ -501,20 +501,60 @@ app.delete('/api/agent/employees/:id', requireAgent, (req, res) => {
 });
 
 /* ---------------- TRAINS API ---------------- */
+var FULL_DATA = null;
+function loadFullData() {
+  if (FULL_DATA) return FULL_DATA;
+  try {
+    var f = path.join(__dirname, 'public', 'trains-data.json');
+    if (fs.existsSync(f)) { FULL_DATA = JSON.parse(fs.readFileSync(f, 'utf-8')); return FULL_DATA; }
+  } catch (e) { console.warn('trains-data.json load failed:', e.message); }
+  return null;
+}
+function estFare(km, cls) {
+  var rate = { '2S': 0.30, 'SL': 0.48, '3E': 0.85, 'CC': 0.95, '3A': 1.05, '2A': 1.55, '1A': 2.50 }[cls] || 0.48;
+  var base = (cls === '2S' || cls === 'SL') ? 50 : 100;
+  var f = Math.round((rate * km + base) / 5) * 5;
+  return f > 0 ? f : 0;
+}
+function tfmt(t) { return (t && t.length === 4) ? t.slice(0, 2) + ':' + t.slice(2) : '--:--'; }
+
 app.get('/api/trains', requireAuth, (req, res) => {
   const from = String(req.query.from || '').toUpperCase();
   const to = String(req.query.to || '').toUpperCase();
-  if (!/^[A-Z]{1,10}$/.test(from) || !/^[A-Z]{1,10}$/.test(to)) {
+  if (!/^[A-Z0-9]{1,10}$/.test(from) || !/^[A-Z0-9]{1,10}$/.test(to)) {
     return res.status(400).json({ error: 'Please select From/To stations from the list.' });
   }
   if (from === to) return res.status(400).json({ error: 'From and To cannot be the same station.' });
-  const trains = TRAINS.filter(t => t.from === from && t.to === to);
-  res.json({
-    trains,
-    demo: true,
-    note: 'Demo timetable for Ludhiana-Prayagraj route. For live all-India trains and booking, use the official IRCTC website/app.',
-    irctcSearchUrl: 'https://www.irctc.co.in/nget/train-search'
-  });
+
+  var F = loadFullData();
+  if (F && F.seqs && F.trains) {
+    var list = [];
+    for (var i = 0; i < F.seqs.length && list.length < 40; i++) {
+      var parts = String(F.seqs[i]).split(',');
+      var fi = -1, ti = -1;
+      for (var j = 0; j < parts.length; j++) {
+        var code = parts[j].split(' ')[0];
+        if (code === from && fi < 0) { fi = j; }
+        if (code === to && fi >= 0 && ti < 0) { ti = j; }
+      }
+      if (fi >= 0 && ti > fi) {
+        var tr = F.trains[i];
+        var clsArr = String(tr[6] || 'SL').split(',');
+        var fobj = {};
+        clsArr.forEach(function (c) { fobj[c] = estFare(tr[7] || 0, c); });
+        list.push({
+          no: tr[0], name: tr[1], from: from, to: to,
+          dep: tfmt(parts[fi].split(' ')[1]), arr: tfmt(parts[ti].split(' ')[1]),
+          classes: clsArr, fares: fobj, dist: tr[7] || 0,
+          note: 'Runs ' + tr[2] + ' \u2192 ' + tr[3]
+        });
+      }
+    }
+    return res.json({ trains: list, reference: true, irctcSearchUrl: 'https://www.irctc.co.in/nget/train-search' });
+  }
+
+  const trains = (typeof TRAINS !== 'undefined' ? TRAINS : []).filter(t => t.from === from && t.to === to);
+  res.json({ trains, demo: true, note: 'Demo timetable only.', irctcSearchUrl: 'https://www.irctc.co.in/nget/train-search' });
 });
 
 /* ---------------- AGENT API ---------------- */
