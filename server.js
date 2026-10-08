@@ -554,7 +554,7 @@ function loadFullData() {
   return null;
 }
 function estFare(km, cls) {
-  var rate = { '2S': 0.30, 'SL': 0.48, '3E': 0.85, 'CC': 0.95, '3A': 1.05, '2A': 1.55, '1A': 2.50 }[cls] || 0.48;
+  var rate = { '2S': 0.33, 'SL': 0.52, '3E': 1.10, 'CC': 1.20, '3A': 1.25, '2A': 1.80, '1A': 2.90 }[cls] || 0.48;
   var base = (cls === '2S' || cls === 'SL') ? 50 : 100;
   var f = Math.round((rate * km + base) / 5) * 5;
   return f > 0 ? f : 0;
