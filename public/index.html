@@ -492,6 +492,7 @@
     <div class="nav-inner">
       <button id="nv-trains" class="active" onclick="showView('trains')" data-en="TRAIN SEARCH" data-hi="ट्रेन सर्च">TRAIN SEARCH</button>
       <button id="nv-quick" onclick="showView('quick')" data-en="PASSENGER MASTER LIST" data-hi="पैसेंजर मास्टर लिस्ट">PASSENGER MASTER LIST</button>
+      <button id="nv-sched" onclick="showView('sched')" data-en="TRAIN SCHEDULE" data-hi="ट्रेन शेड्यूल">TRAIN SCHEDULE</button>
       <button id="nv-help" onclick="showView('help')" data-en="HELP &amp; RULES" data-hi="मदद और नियम">HELP &amp; RULES</button>
       <button id="nv-agent" class="hidden" onclick="showView('agent')" data-en="AGENT PANEL" data-hi="एजेंट पैनल">AGENT PANEL</button>
       <button id="nv-settings" class="hidden" onclick="showView('settings')" data-en="INTEGRATIONS" data-hi="इंटीग्रेशन">INTEGRATIONS</button>
@@ -812,6 +813,20 @@
         </div>
       </div>
     </section>
+    <section id="view-sched" class="hidden">
+      <div class="card">
+        <div class="card-h" data-en="TRAIN SCHEDULE - FULL ROUTE" data-hi="ट्रेन शेड्यूल - पूरा रूट">TRAIN SCHEDULE - FULL ROUTE</div>
+        <div class="card-b">
+          <div class="note">Train number daalo (jaise 18102) - uski <b>poori route</b>, sab station aur time dikhega.</div>
+          <div class="form-row" style="grid-template-columns:240px auto">
+            <div><div class="cap" data-en="TRAIN NUMBER" data-hi="ट्रेन नंबर">TRAIN NUMBER</div><input id="schNo" placeholder="e.g. 18102"></div>
+            <button class="btn-search" style="height:38px" onclick="runSchedule()" data-en="SHOW ROUTE" data-hi="रूट दिखाएं">SHOW ROUTE</button>
+          </div>
+          <div id="schMsg" class="msg"></div>
+          <div id="schWrap"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -1081,6 +1096,23 @@
       return jsonResp({ ok: true, deleted: before !== list.length });
     }
 
+    if (path === '/api/schedule') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var qp = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qp[a[0]] = decodeURIComponent(a[1] || ''); });
+      var sno = String(qp.no || '').trim().toUpperCase();
+      if (!sno) return jsonResp({ error: 'Train number daalein.' }, 400);
+      if (!REF || !REF.trains) return jsonResp({ error: 'Data load ho raha hai - thodi der baad try karein.' }, 503);
+      var sidx = -1;
+      for (var si = 0; si < REF.trains.length; si++) { if (String(REF.trains[si][0]).toUpperCase() === sno) { sidx = si; break; } }
+      if (sidx < 0) return jsonResp({ error: 'Train number nahin mila. Sahi number daalein (jaise 18102).' }, 404);
+      var str = REF.trains[sidx];
+      var sstops = String(REF.seqs[sidx]).split(',').map(function (p, k) {
+        var bits = p.split(' ');
+        return { i: k + 1, code: bits[0], time: (bits[1] && bits[1].length === 4) ? bits[1].slice(0, 2) + ':' + bits[1].slice(2) : '--:--' };
+      });
+      return jsonResp({ train: { no: str[0], name: str[1], src: str[2], dst: str[3], dep: str[4], arr: str[5], classes: String(str[6] || 'SL').split(','), dist: str[7] }, stops: sstops });
+    }
+
     if (path === '/api/trains') {
       if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
       var params = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); params[a[0]] = decodeURIComponent(a[1] || ''); });
@@ -1299,7 +1331,7 @@ function enterApp(user) {
   showView('trains');
 }
 function showView(v) {
-  ['trains', 'quick', 'agent', 'settings', 'ai', 'help'].forEach(function (x) {
+  ['trains', 'quick', 'agent', 'settings', 'ai', 'help', 'sched'].forEach(function (x) {
     var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
     var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
   });
@@ -2039,6 +2071,28 @@ async function callAi(s, q) {
   if (!r2.ok) throw new Error((d2.error && d2.error.message) || ('HTTP ' + r2.status));
   var ch = (d2.choices || [])[0] || {};
   return (ch.message || {}).content || 'No reply';
+}
+
+/* ================= TRAIN SCHEDULE ================= */
+async function runSchedule() {
+  var no = ((document.getElementById('schNo') || {}).value || '').trim();
+  if (!no) { toast(LANG === 'hi' ? 'Train number daalo' : 'Enter a train number'); return; }
+  try {
+    var r = await api('/api/schedule?no=' + encodeURIComponent(no));
+    var t = r.train || {};
+    var rows = (r.stops || []).map(function (s) {
+      return '<tr><td>' + s.i + '</td><td><b>' + s.code + '</b></td><td>' + s.time + '</td></tr>';
+    }).join('');
+    document.getElementById('schWrap').innerHTML =
+      '<div class="warn-box"><b>' + (t.name || '') + ' (' + (t.no || '') + ')</b><br>Runs ' + (t.src || '') + ' &rarr; ' + (t.dst || '') +
+      ' | ' + (t.dist || 0) + ' km | ' + (LANG === 'hi' ? 'श्रेणियाँ' : 'Classes') + ': ' + ((t.classes || []).join(', ')) + '</div>' +
+      '<div class="note" style="margin-bottom:6px">' + (LANG === 'hi' ? 'कुल ' + (r.stops || []).length + ' स्टेशन - समय reference data se hai, IRCTC par confirm karein.' : 'Total ' + (r.stops || []).length + ' stops - times from reference data, confirm on IRCTC.') + '</div>' +
+      '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>#</th><th>' + (LANG === 'hi' ? 'स्टेशन' : 'Station') + '</th><th>' + (LANG === 'hi' ? 'समय' : 'Time') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    showMsg('schMsg', '', true);
+  } catch (e) {
+    document.getElementById('schWrap').innerHTML = '';
+    showMsg('schMsg', e.message, false);
+  }
 }
 
 /* ================= SAVED ROUTES ================= */
