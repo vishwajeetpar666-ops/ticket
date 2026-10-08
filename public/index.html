@@ -549,6 +549,7 @@
             <button class="btn-search" onclick="runSearch()" data-en="SEARCH TRAINS" data-hi="ट्रेनें खोजें">SEARCH TRAINS</button>
           </div>
           <div id="routeBar" style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
+          <div class="note" style="margin-top:6px">&#9889; Shortcuts: <b>Ctrl+K</b> = search box &nbsp;|&nbsp; <b>Enter</b> (From) = To &nbsp;|&nbsp; <b>Enter</b> (To) = Search &nbsp;|&nbsp; <b>Esc</b> = close popup</div>
           <div id="searchMsg" class="msg"></div>
         </div>
       </div>
@@ -2121,6 +2122,20 @@ function tickClock() {
   checkAlarm(39600, now, 'SL');
 }
 setInterval(tickClock, 1000); tickClock();
+
+/* ================= keyboard shortcuts (tatkal speed) ================= */
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { try { closeKit(); } catch (err) {} }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault();
+    var f = document.getElementById('fromInput');
+    if (f && !document.getElementById('app').classList.contains('hidden')) { f.focus(); f.select(); }
+  }
+});
+var _fromEl = document.getElementById('fromInput');
+if (_fromEl) _fromEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var t = document.getElementById('toInput'); if (t) t.focus(); } });
+var _toEl = document.getElementById('toInput');
+if (_toEl) _toEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') runSearch(); });
 
 /* enter key handlers */
 document.getElementById('liPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
