@@ -585,6 +585,22 @@ app.get('/api/trains', requireAuth, (req, res) => {
 });
 
 /* ---------------- AGENT API ---------------- */
+app.get('/api/schedule', requireAuth, (req, res) => {
+  const no = String(req.query.no || '').trim().toUpperCase();
+  if (!no) return res.status(400).json({ error: 'Train number daalein.' });
+  var F = loadFullData();
+  if (!F || !F.trains) return res.status(503).json({ error: 'Data load ho raha hai - thodi der baad try karein.' });
+  var idx = -1;
+  for (var i = 0; i < F.trains.length; i++) { if (String(F.trains[i][0]).toUpperCase() === no) { idx = i; break; } }
+  if (idx < 0) return res.status(404).json({ error: 'Train number nahin mila. Sahi number daalein (jaise 18102).' });
+  var tr = F.trains[idx];
+  var stops = String(F.seqs[idx]).split(',').map(function (p, k) {
+    var bits = p.split(' ');
+    return { i: k + 1, code: bits[0], time: (bits[1] && bits[1].length === 4) ? bits[1].slice(0, 2) + ':' + bits[1].slice(2) : '--:--' };
+  });
+  res.json({ train: { no: tr[0], name: tr[1], src: tr[2], dst: tr[3], dep: tr[4], arr: tr[5], classes: String(tr[6] || 'SL').split(','), dist: tr[7] }, stops: stops });
+});
+
 app.get('/api/agent/customers', requireAgent, (req, res) => {
   const customers = db.users
     .filter(u => u.role === 'customer')
