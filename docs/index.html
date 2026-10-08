@@ -812,6 +812,28 @@
           <div class="warn-box" data-html="1">Is portal par train number, timing aur <b>indicative</b> fare public Indian Railways dataset se aate hain - ye badal sakte hain. <b>Live seat availability, asli ticket aur payment IRCTC ke system se hote hain.</b> Har result par "BOOK / LIVE SEARCH ON IRCTC" button se official IRCTC site khulti hai. <b>Asli ticket sirf IRCTC se hi banta hai</b> - is portal se koi ticket generate nahin hota.</div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-h" data-en="PNR STATUS + OFFICIAL RAILWAY LINKS" data-hi="PNR स्टेटस + आधिकारिक रेलवे लिंक">PNR STATUS + OFFICIAL RAILWAY LINKS</div>
+        <div class="card-b">
+          <div class="form-row" style="grid-template-columns:260px auto">
+            <div><div class="cap" data-en="PNR NUMBER" data-hi="PNR नंबर">PNR NUMBER</div><input id="pnrInput" maxlength="10" placeholder="10-digit PNR"></div>
+            <button class="btn-search" style="height:38px" onclick="checkPnr()" data-en="CHECK ON IRCTC" data-hi="IRCTC पर देखें">CHECK ON IRCTC</button>
+          </div>
+          <div id="pnrMsg" class="msg"></div>
+          <div class="note" style="margin:6px 0 12px">PNR ki asli status sirf IRCTC par dikhti hai - yahan se seedha IRCTC khul jaata hai. (Agent API judne par status yahin dikhega.)</div>
+
+          <div class="pax-row" style="display:block"><b>Official IRCTC links</b>
+            <div class="note" style="margin-top:6px">
+              &bull; <a href="https://www.irctc.co.in/" target="_blank" rel="noopener">IRCTC official website</a><br>
+              &bull; <a href="https://www.irctc.co.in/nget/pnr-enquiry" target="_blank" rel="noopener">PNR enquiry</a><br>
+              &bull; <a href="https://www.irctc.co.in/nget/train-search" target="_blank" rel="noopener">Train search / booking</a><br>
+              &bull; <a href="https://contents.irctc.co.in/en/RefundRules.pdf" target="_blank" rel="noopener">Refund rules (IRCTC)</a><br>
+              &bull; <a href="tel:139">Railway helpline 139 (call)</a> &nbsp;|&nbsp; <a href="https://www.indianrail.gov.in/" target="_blank" rel="noopener">Indian Railways</a>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
     <section id="view-sched" class="hidden">
       <div class="card">
@@ -2168,6 +2190,14 @@ async function runVia() {
           '<div class="note">2) ' + x.t2.no + ' ' + x.t2.name + ' &mdash; ' + x.hub + ' ' + x.t2.dep + ' &rarr; ' + s.to + ' ' + x.t2.arr + '</div></div>';
       }).join('') : '<span class="note">' + (LANG === 'hi' ? 'Koi connecting route nahin mila. IRCTC par dekhein.' : 'No connecting route found. Check IRCTC.') + '</span>');
   } catch (e) { box.textContent = 'Error: ' + e.message; }
+}
+
+/* ================= PNR ================= */
+function checkPnr() {
+  var v = ((document.getElementById('pnrInput') || {}).value || '').replace(/[^0-9]/g, '');
+  if (v.length !== 10) { showMsg('pnrMsg', LANG === 'hi' ? 'PNR 10 ank ka hota hai.' : 'A PNR is 10 digits.', false); return; }
+  showMsg('pnrMsg', LANG === 'hi' ? 'IRCTC par PNR enquiry khul rahi hai...' : 'Opening IRCTC PNR enquiry...', true);
+  window.open('https://www.irctc.co.in/nget/pnr-enquiry', '_blank', 'noopener');
 }
 
 /* ================= TRAIN SCHEDULE ================= */
