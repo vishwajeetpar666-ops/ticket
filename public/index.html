@@ -1478,7 +1478,15 @@ async function kitRender() {
         '<b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + '</span></div>';
     }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'मास्टर लिस्ट खाली है - पहले PASSENGER MASTER LIST में यात्री जोड़ें।' : 'Your master list is empty - add passengers first in PASSENGER MASTER LIST.') + '</div>';
     body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
-      '<div style="margin:12px 0">' + rows + '</div><div id="kitCopyBox"></div>';
+      '<div style="margin:12px 0">' + rows + '</div>' +
+      '<div class="form-row" style="grid-template-columns:1.4fr 80px 120px auto">' +
+      '<div><div class="cap">' + (LANG === 'hi' ? 'नाम (आईडी अनुसार)' : 'NAME (as per ID)') + '</div><input id="kpfName" placeholder="e.g. VISHWAJEET KUMAR"></div>' +
+      '<div><div class="cap">' + (LANG === 'hi' ? 'उम्र' : 'AGE') + '</div><input id="kpfAge" type="number" placeholder="29"></div>' +
+      '<div><div class="cap">' + (LANG === 'hi' ? 'लिंग' : 'GENDER') + '</div><select id="kpfGen"><option>Male</option><option>Female</option><option>Transgender</option></select></div>' +
+      '<button class="btn-search" style="height:38px" onclick="kitAddPassenger()">+ ADD</button>' +
+      '</div>' +
+      '<div class="note">' + (LANG === 'hi' ? 'Yahin se yatri jodo - Master List mein bhi save ho jaayega.' : 'Add a passenger right here - it also saves to your Master List.') + '</div>' +
+      '<div id="kitCopyBox"></div>';
     foot.innerHTML = '<button class="btn-grey" onclick="closeKit()">' + (LANG === 'hi' ? 'बंद' : 'Close') + '</button>' +
       '<button class="btn-grey" onclick="kitCopy()">&#128203; COPY PASSENGERS</button>' +
       '<button class="btn-book" onclick="kitNext()">' + (LANG === 'hi' ? 'आगे: रिव्यू →' : 'NEXT: REVIEW →') + '</button>';
@@ -1547,6 +1555,21 @@ async function kitRender() {
     foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
       '<button class="btn-grey" onclick="showView(\'settings\');closeKit();">OPEN INTEGRATIONS</button>' + payBtn;
   }
+}
+async function kitAddPassenger() {
+  var n = ((document.getElementById('kpfName') || {}).value || '').trim();
+  var a = ((document.getElementById('kpfAge') || {}).value || '');
+  if (!n || !a) { toast(LANG === 'hi' ? 'Naam aur umar bharo' : 'Fill name and age'); return; }
+  try {
+    await api('/api/passengers', { method: 'POST', body: JSON.stringify({
+      name: n, age: a,
+      gender: ((document.getElementById('kpfGen') || {}).value || 'Male'),
+      berth: 'No Preference', food: 'No Food'
+    }) });
+    toast(LANG === 'hi' ? 'Yatri add ho gaya' : 'Passenger added');
+    loadPassengers();
+    kitRender();
+  } catch (e) { toast(e.message); }
 }
 function kitSelected() {
   var out = [];
