@@ -388,6 +388,13 @@
   body.light #themeBtn,body.light .lang-btn.app{background:#f4f7ff !important;color:#12306e !important;border-color:#dbe1ec !important;}
   body.light .btn-logout{color:#c62828 !important;border-color:#e6c9c9 !important;}
 </style>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0f1421">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VP Ticket">
 </head>
 <body>
 
@@ -2377,6 +2384,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(function () {}); }
 </script>
 </body>
 </html>
