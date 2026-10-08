@@ -291,6 +291,22 @@ app.get('/', function (req, res) {
   } catch (e) {}
   res.send(INDEX_HTML);
 });
+app.get('/manifest.json', function (req, res) {
+  res.set('Content-Type', 'application/manifest+json; charset=utf-8');
+  try { return res.send(fs.readFileSync(path.join(__dirname, 'public', 'manifest.json'), 'utf-8')); } catch (e) {}
+  res.status(404).end();
+});
+app.get('/sw.js', function (req, res) {
+  res.set('Content-Type', 'application/javascript; charset=utf-8');
+  res.set('Service-Worker-Allowed', '/');
+  try { return res.send(fs.readFileSync(path.join(__dirname, 'public', 'sw.js'), 'utf-8')); } catch (e) {}
+  res.status(404).end();
+});
+app.get('/icons/:f', function (req, res) {
+  try { return res.sendFile(path.join(__dirname, 'public', 'icons', path.basename(req.params.f))); } catch (e) {}
+  res.status(404).end();
+});
+
 app.get('/stations.json', function (req, res) {
   res.set('Content-Type', 'application/json; charset=utf-8');
   try {
