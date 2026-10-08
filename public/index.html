@@ -826,6 +826,19 @@
           <div id="schWrap"></div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-h" data-en="STATION - WHICH TRAINS STOP HERE" data-hi="स्टेशन - यहाँ कौन सी ट्रेनें रुकती हैं">STATION - WHICH TRAINS STOP HERE</div>
+        <div class="card-b">
+          <div class="note">Station code daalo (jaise LDH, PNBE, NDLS) - us station par rukne wali saari trains dikhengi.</div>
+          <div class="form-row" style="grid-template-columns:240px auto">
+            <div><div class="cap" data-en="STATION CODE" data-hi="स्टेशन कोड">STATION CODE</div><input id="stnNo" placeholder="e.g. LDH" style="text-transform:uppercase"></div>
+            <button class="btn-search" style="height:38px" onclick="runStation()" data-en="SHOW TRAINS" data-hi="ट्रेनें दिखाएं">SHOW TRAINS</button>
+          </div>
+          <div id="stnMsg" class="msg"></div>
+          <div id="stnWrap"></div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -1094,6 +1107,28 @@
       list = list.filter(function (p) { return !(p.id === pid && p.userId === session.id); });
       save('vpr_passengers', list);
       return jsonResp({ ok: true, deleted: before !== list.length });
+    }
+
+    if (path === '/api/station') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var qs = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qs[a[0]] = decodeURIComponent(a[1] || ''); });
+      var scode = String(qs.code || '').trim().toUpperCase();
+      if (!scode) return jsonResp({ error: 'Station code daalein.' }, 400);
+      if (!REF || !REF.seqs) return jsonResp({ error: 'Data load ho raha hai - thodi der baad try karein.' }, 503);
+      var out = [];
+      for (var q = 0; q < REF.seqs.length && out.length < 80; q++) {
+        var pp = String(REF.seqs[q]).split(',');
+        for (var z = 0; z < pp.length; z++) {
+          var cc = pp[z].split(' ');
+          if (cc[0] === scode) {
+            var trq = REF.trains[q];
+            out.push({ no: trq[0], name: trq[1], src: trq[2], dst: trq[3],
+                       time: (cc[1] && cc[1].length === 4) ? cc[1].slice(0, 2) + ':' + cc[1].slice(2) : '--:--' });
+            break;
+          }
+        }
+      }
+      return jsonResp({ station: scode, trains: out });
     }
 
     if (path === '/api/schedule') {
@@ -2092,6 +2127,27 @@ async function runSchedule() {
   } catch (e) {
     document.getElementById('schWrap').innerHTML = '';
     showMsg('schMsg', e.message, false);
+  }
+}
+
+/* ================= STATION - TRAINS STOPPING ================= */
+async function runStation() {
+  var code = ((document.getElementById('stnNo') || {}).value || '').trim().toUpperCase();
+  if (!code) { toast(LANG === 'hi' ? 'Station code daalo' : 'Enter a station code'); return; }
+  try {
+    var r = await api('/api/station?code=' + encodeURIComponent(code));
+    var list = r.trains || [];
+    var rows = list.map(function (t, i) {
+      return '<tr><td>' + (i + 1) + '</td><td><b>' + t.no + '</b> ' + t.name + '</td><td>' + t.src + ' &rarr; ' + t.dst + '</td><td>' + t.time + '</td></tr>';
+    }).join('');
+    document.getElementById('stnWrap').innerHTML = list.length
+      ? '<div class="note" style="margin-bottom:6px">' + (LANG === 'hi' ? r.station + ' par ' + list.length + ' trains (reference data).' : list.length + ' trains at ' + r.station + ' (reference data).') + '</div>' +
+        '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>#</th><th>' + (LANG === 'hi' ? 'ट्रेन' : 'Train') + '</th><th>' + (LANG === 'hi' ? 'रूट' : 'Route') + '</th><th>' + (LANG === 'hi' ? 'समय' : 'Time') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty-state">' + (LANG === 'hi' ? 'Is station ka data nahin mila.' : 'No data found for this station.') + '</div>';
+    showMsg('stnMsg', '', true);
+  } catch (e) {
+    document.getElementById('stnWrap').innerHTML = '';
+    showMsg('stnMsg', e.message, false);
   }
 }
 
