@@ -1109,6 +1109,15 @@
       return jsonResp({ ok: true, deleted: before !== list.length });
     }
 
+    if (path === '/api/via') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var qv = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qv[a[0]] = decodeURIComponent(a[1] || ''); });
+      var vf = String(qv.from || '').toUpperCase(), vt = String(qv.to || '').toUpperCase();
+      if (!vf || !vt) return jsonResp({ error: 'From/To chahiye.' }, 400);
+      if (!REF || !REF.seqs) return jsonResp({ error: 'Data load ho raha hai - thodi der baad try karein.' }, 503);
+      return jsonResp({ routes: findViaRoutes(REF, vf, vt, 6) });
+    }
+
     if (path === '/api/station') {
       if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
       var qs = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qs[a[0]] = decodeURIComponent(a[1] || ''); });
@@ -1471,12 +1480,14 @@ function renderResults(trains) {
   var classes = ['', 'SL', '3A', '2A', '1A', 'CC', '2S'];
   var tool = '<div class="toolbar"><span class="tb-label">' + (LANG === 'hi' ? 'क्रम' : 'Sort') + ':</span>' +
     sorts.map(function (x) { return '<button class="' + (sortMode === x[0] ? 'active' : '') + '" onclick="setSort(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') +
+    '<button onclick="runVia()" title="Connecting routes">&#128257; VIA</button>' +
     '<span class="tb-label" style="margin-left:14px">' + (LANG === 'hi' ? 'श्रेणी' : 'Class') + ':</span>' +
     classes.map(function (c) { return '<button class="' + (filterCls === c ? 'active' : '') + '" onclick="setClsFilter(\'' + c + '\')">' + (c || (LANG === 'hi' ? 'सभी' : 'All')) + '</button>'; }).join('') +
     '</div>';
   if (!list.length) {
     wrap.innerHTML = head + banner + tool + '<div class="card"><div class="empty-state">' +
-      (LANG === 'hi' ? 'इस फ़िल्टर में कोई ट्रेन नहीं मिली। फ़िल्टर बदलें या IRCTC पर देखें।' : 'No trains match this filter. Change the filter or check IRCTC.') +
+      (LANG === 'hi' ? 'इस फ़िल्टर में कोई ट्रेन नहीं मिली। फ़िल्टर बदलें, या नीचे <b>VIA ROUTES</b> देखें।' : 'No trains match this filter. Change the filter, or try <b>VIA ROUTES</b> below.') +
+      '<div style="margin-top:12px"><button class="btn-grey" onclick="runVia()">&#128257; ' + (LANG === 'hi' ? 'CONNECTING (VIA) ROUTES दिखाएं' : 'SHOW CONNECTING (VIA) ROUTES') + '</button></div>' +
       '</div></div>';
     return;
   }
@@ -2106,6 +2117,57 @@ async function callAi(s, q) {
   if (!r2.ok) throw new Error((d2.error && d2.error.message) || ('HTTP ' + r2.status));
   var ch = (d2.choices || [])[0] || {};
   return (ch.message || {}).content || 'No reply';
+}
+
+function findViaRoutes(REF, A, B, maxHubs) {
+  function ft(s) { return (s && s.length === 4) ? s.slice(0, 2) + ':' + s.slice(2) : '--:--'; }
+  var after = {}, before = {};
+  for (var i = 0; i < REF.seqs.length; i++) {
+    var parts = String(REF.seqs[i]).split(',');
+    var codes = [], times = [];
+    for (var q = 0; q < parts.length; q++) { var b2 = parts[q].split(' '); codes.push(b2[0]); times.push(b2[1] || ''); }
+    var ai = codes.indexOf(A);
+    if (ai >= 0) { for (var j = ai + 1; j < codes.length; j++) { if (!after[codes[j]]) after[codes[j]] = { i: i, time: times[j] }; } }
+    var bi = codes.indexOf(B);
+    if (bi >= 0) { for (var j2 = 0; j2 < bi; j2++) { if (!before[codes[j2]]) before[codes[j2]] = { i: i, time: times[j2] }; } }
+  }
+  var hubs = [];
+  for (var h in after) { if (before[h] && h !== A && h !== B) hubs.push(h); }
+  var out = [];
+  for (var k = 0; k < hubs.length && out.length < maxHubs; k++) {
+    var hub = hubs[k], e1 = after[hub], e2 = before[hub];
+    var t1 = REF.trains[e1.i], t2 = REF.trains[e2.i];
+    var p1 = String(REF.seqs[e1.i]).split(','), p2 = String(REF.seqs[e2.i]).split(',');
+    var a2 = -1, b3 = -1;
+    for (var z = 0; z < p1.length; z++) { if (p1[z].split(' ')[0] === A) { a2 = z; break; } }
+    for (var z2 = 0; z2 < p2.length; z2++) { if (p2[z2].split(' ')[0] === B) { b3 = z2; break; } }
+    out.push({
+      hub: hub,
+      t1: { no: t1[0], name: t1[1], dep: ft(a2 >= 0 ? p1[a2].split(' ')[1] : ''), arr: ft(e1.time) },
+      t2: { no: t2[0], name: t2[1], dep: ft(e2.time), arr: ft(b3 >= 0 ? p2[b3].split(' ')[1] : '') }
+    });
+  }
+  return out;
+}
+
+async function runVia() {
+  var s = currentSearch;
+  if (!s) { toast(LANG === 'hi' ? 'Pehle search karo' : 'Search first'); return; }
+  var wrap = document.getElementById('resultsWrap');
+  var box = document.createElement('div');
+  box.className = 'warn-box';
+  box.textContent = (LANG === 'hi' ? 'Connecting (via) routes dhoondh raha hoon...' : 'Finding connecting (via) routes...');
+  wrap.appendChild(box);
+  try {
+    var r = await api('/api/via?from=' + s.from + '&to=' + s.to);
+    var list = r.routes || [];
+    box.innerHTML = '<b>&#128257; ' + (LANG === 'hi' ? 'CONNECTING (VIA) ROUTES' : 'CONNECTING (VIA) ROUTES') + '</b> &mdash; ' + s.from + ' &rarr; ' + s.to + ' (' + list.length + ')<br>' +
+      (list.length ? list.map(function (x) {
+        return '<div class="pax-row" style="display:block"><b>' + (LANG === 'hi' ? 'जंक्शन: ' : 'Junction: ') + x.hub + '</b>' +
+          '<div class="note">1) ' + x.t1.no + ' ' + x.t1.name + ' &mdash; ' + s.from + ' ' + x.t1.dep + ' &rarr; ' + x.hub + ' ' + x.t1.arr + '</div>' +
+          '<div class="note">2) ' + x.t2.no + ' ' + x.t2.name + ' &mdash; ' + x.hub + ' ' + x.t2.dep + ' &rarr; ' + s.to + ' ' + x.t2.arr + '</div></div>';
+      }).join('') : '<span class="note">' + (LANG === 'hi' ? 'Koi connecting route nahin mila. IRCTC par dekhein.' : 'No connecting route found. Check IRCTC.') + '</span>');
+  } catch (e) { box.textContent = 'Error: ' + e.message; }
 }
 
 /* ================= TRAIN SCHEDULE ================= */
