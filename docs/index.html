@@ -387,6 +387,12 @@
   body.light .cls-tabs button.active{background:#fff3ea !important;color:#e2570f !important;}
   body.light #themeBtn,body.light .lang-btn.app{background:#f4f7ff !important;color:#12306e !important;border-color:#dbe1ec !important;}
   body.light .btn-logout{color:#c62828 !important;border-color:#e6c9c9 !important;}
+
+  .badge{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:middle;}
+  .badge.fast{background:rgba(47,125,79,.25);color:#5fd48f;border:1px solid #2f7d4f;}
+  .badge.short{background:rgba(249,115,22,.18);color:#ff9a4d;border:1px solid #f97316;}
+  body.light .badge.fast{background:#eaf7ef;color:#14804a;border-color:#9fd8b6;}
+  body.light .badge.short{background:#fff3ea;color:#e2570f;border-color:#f6c39a;}
 </style>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0f1421">
@@ -1521,7 +1527,25 @@ function renderResults(trains) {
       '</div></div>';
     return;
   }
-  wrap.innerHTML = head + banner + tool + list.map(function (t, i) { return trainCard(t, i); }).join('');
+  var fastest = null, shortest = null;
+  list.forEach(function (t) {
+    var dm = durMins(t.dep, t.arr);
+    if (dm && (!fastest || dm < fastest.dm)) fastest = { no: t.no, dm: dm };
+    if (t.dist && (!shortest || t.dist < shortest.dist)) shortest = { no: t.no, dist: t.dist };
+  });
+  var summary = (fastest || shortest)
+    ? '<div class="note" style="margin:-4px 0 12px">' +
+      (fastest ? '&#9889; ' + (LANG === 'hi' ? 'सबसे तेज़' : 'Fastest') + ': <b>' + fastest.no + '</b> (' + fmtDur(fastest.dm) + ')' : '') +
+      (fastest && shortest ? ' &nbsp;|&nbsp; ' : '') +
+      (shortest ? '&#128205; ' + (LANG === 'hi' ? 'सबसे छोटा' : 'Shortest') + ': <b>' + shortest.no + '</b> (' + shortest.dist + ' km)' : '') +
+      '</div>'
+    : '';
+  wrap.innerHTML = head + banner + tool + summary + list.map(function (t, i) {
+    var tags = [];
+    if (fastest && String(t.no) === String(fastest.no)) tags.push('FASTEST');
+    if (shortest && String(t.no) === String(shortest.no)) tags.push('SHORTEST');
+    return trainCard(t, i, tags.join(','));
+  }).join('');
 }
 function setSort(m) { sortMode = m; renderResults(null); }
 function setClsFilter(c) { filterCls = c; renderResults(null); }
@@ -1537,14 +1561,17 @@ function fmtDur(mins) {
   var hh = Math.floor(mins / 60), mm = mins % 60;
   return hh + 'h' + (mm ? ' ' + mm + 'm' : '');
 }
-function trainCard(t, idx) {
+function trainCard(t, idx, badge) {
   var cls = t.classes[0];
   var fare = t.fares[cls] || '';
   var tabs = t.classes.map(function (c, i) {
     return '<button class="' + (i === 0 ? 'active' : '') + '" onclick="pickCls(this,\'' + c + '\',' + idx + ')">' + c + '</button>';
   }).join('');
   return '<div class="train-card" data-fares="' + encodeURIComponent(JSON.stringify(t.fares || {})) + '">' +
-    '<div class="tc-head"><div><span class="tname">' + t.name + '</span> <span class="tno">(' + t.no + ')</span></div><span class="note">' + t.note + '</span></div>' +
+    '<div class="tc-head"><div><span class="tname">' + t.name + '</span> <span class="tno">(' + t.no + ')</span>' +
+      ((badge || '').indexOf('FASTEST') >= 0 ? ' <span class="badge fast">&#9889; ' + (LANG === 'hi' ? 'सबसे तेज़' : 'FASTEST') + '</span>' : '') +
+      ((badge || '').indexOf('SHORTEST') >= 0 ? ' <span class="badge short">&#128205; ' + (LANG === 'hi' ? 'सबसे छोटा रास्ता' : 'SHORTEST') + '</span>' : '') +
+      '</div><span class="note">' + t.note + '</span></div>' +
     '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn">' + t.from + '</div></div>' +
     '<div class="dur">' + t.dist + ' km' + (durMins(t.dep, t.arr) ? '<br>' + fmtDur(durMins(t.dep, t.arr)) : '') + '</div>' +
     '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
