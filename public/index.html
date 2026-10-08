@@ -892,6 +892,20 @@
           <div id="stnWrap"></div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-h" data-en="LIVE RUNNING STATUS (SATELLITE / RTIS)" data-hi="लाइव रनिंग स्टेटस (सैटेलाइट / RTIS)">LIVE RUNNING STATUS (SATELLITE / RTIS)</div>
+        <div class="card-b">
+          <div class="note">Train ki <b>live position</b> ISRO ke satellite (<b>RTIS</b>) se track hoti hai. Aaj ye official NTES par dikhti hai &mdash; authorised RTIS/API judne par <b>yahin tumhari site par</b> dikhegi.</div>
+          <div class="form-row" style="grid-template-columns:240px 170px auto">
+            <div><div class="cap" data-en="TRAIN NUMBER" data-hi="ट्रेन नंबर">TRAIN NUMBER</div><input id="lsNo" placeholder="e.g. 18102"></div>
+            <div><div class="cap" data-en="DATE (optional)" data-hi="तारीख (वैकल्पिक)">DATE (optional)</div><input type="date" id="lsDate"></div>
+            <button class="btn-search" style="height:38px" onclick="runLive()" data-en="CHECK LIVE STATUS" data-hi="लाइव स्टेटस देखें">CHECK LIVE STATUS</button>
+          </div>
+          <div id="lsMsg" class="msg"></div>
+          <div id="lsWrap"></div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -2290,6 +2304,22 @@ async function runVia() {
           '<div class="note">2) ' + x.t2.no + ' ' + x.t2.name + ' &mdash; ' + x.hub + ' ' + x.t2.dep + ' &rarr; ' + s.to + ' ' + x.t2.arr + '</div></div>';
       }).join('') : '<span class="note">' + (LANG === 'hi' ? 'Koi connecting route nahin mila. IRCTC par dekhein.' : 'No connecting route found. Check IRCTC.') + '</span>');
   } catch (e) { box.textContent = 'Error: ' + e.message; }
+}
+
+/* ================= LIVE RUNNING STATUS (satellite / RTIS) ================= */
+function runLive() {
+  var no = ((document.getElementById('lsNo') || {}).value || '').trim();
+  if (!no) { toast(LANG === 'hi' ? 'Train number daalo' : 'Enter a train number'); return; }
+  var d = (document.getElementById('lsDate') || {}).value || '';
+  document.getElementById('lsWrap').innerHTML =
+    '<div class="warn-box" style="border-color:#2f6e8f"><b>&#128752; ' + (LANG === 'hi' ? 'लाइव रनिंग स्टेटस (सैटेलाइट / RTIS)' : 'Live running status (satellite / RTIS)') + '</b><br>' +
+    (LANG === 'hi' ? 'Train ' : 'Train ') + '<b>' + no + '</b>' + (d ? ' (' + d + ')' : '') +
+    (LANG === 'hi'
+      ? ' ki live position official NTES par aati hai (ISRO RTIS satellite tracking). Neeche button se aaj dekh sakte ho; authorised RTIS/API milne par ye yahin tumhari site par dikhega.'
+      : ' &mdash; live position comes from official NTES (ISRO RTIS satellite tracking). Use the button below today; once authorised RTIS/API access is added, it will show right here on your site.') +
+    '</div>' +
+    '<a class="btn-book" target="_blank" rel="noopener" href="https://enquiry.indianrail.gov.in/mntes/">' + (LANG === 'hi' ? 'आधिकारिक लाइव स्टेटस खोलें (NTES) →' : 'OPEN OFFICIAL LIVE STATUS (NTES) →') + '</a>';
+  showMsg('lsMsg', '', true);
 }
 
 /* ================= PNR ================= */
