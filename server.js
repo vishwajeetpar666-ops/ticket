@@ -72,7 +72,7 @@ const OTP_DEV_MODE = !(SMS_OK || MAIL_OK);
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'db.json');
-let db = { users: [], passengers: [], otps: {}, employees: [] };
+let db = { users: [], passengers: [], otps: {}, employees: [], bookings: [] };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))); } catch (e) {}
 function saveDb() {
   const tmp = DB_FILE + '.tmp';
@@ -490,6 +490,33 @@ app.post('/api/agent/employees', requireAgent, (req, res) => {
   db.employees.push(rec);
   saveDb();
   res.json({ ok: true, employee: rec });
+});
+
+app.get('/api/agent/bookings', requireAgent, (req, res) => {
+  res.json({ bookings: db.bookings || [] });
+});
+
+app.post('/api/agent/bookings', requireAgent, (req, res) => {
+  const b = req.body || {};
+  const rec = {
+    id: newId(),
+    date: String(b.date || '').slice(0, 20),
+    train: String(b.train || '').toUpperCase().slice(0, 60),
+    pnr: String(b.pnr || '').slice(0, 20),
+    pax: parseInt(b.pax || '1', 10) || 1,
+    commission: parseInt(b.commission || '5', 10) || 0,
+    created: new Date().toISOString()
+  };
+  db.bookings = db.bookings || [];
+  db.bookings.push(rec);
+  saveDb();
+  res.json({ ok: true, booking: rec });
+});
+
+app.delete('/api/agent/bookings/:id', requireAgent, (req, res) => {
+  db.bookings = (db.bookings || []).filter(b => b.id !== req.params.id);
+  saveDb();
+  res.json({ ok: true });
 });
 
 app.delete('/api/agent/employees/:id', requireAgent, (req, res) => {
