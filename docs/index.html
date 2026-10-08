@@ -648,6 +648,7 @@
             <div class="stat-box"><div class="v" id="bkPaxTotal">0</div><div class="k" data-en="Total Passengers" data-hi="कुल यात्री">Total Passengers</div></div>
             <div class="stat-box"><div class="v" id="bkCommTotal">0</div><div class="k" data-en="Total Commission (Rs.)" data-hi="कुल कमीशन (Rs.)">Total Commission (Rs.)</div></div>
           </div>
+          <div style="margin:10px 0"><button class="btn-grey" onclick="exportBookings()">&#11015; DOWNLOAD CSV (Excel)</button></div>
           <div style="overflow-x:auto">
             <table class="plist" id="bkTable">
               <thead><tr><th>#</th><th>Date</th><th>Train</th><th>PNR</th><th>Pax</th><th>Comm (Rs.)</th><th>Action</th></tr></thead>
@@ -1674,10 +1675,12 @@ async function addPassenger() {
     toast(LANG === 'hi' ? 'यात्री सेव हो गया' : 'Passenger saved');
   } catch (e) { toast(e.message); }
 }
+var bookingsCache = [];
 async function loadBookings() {
   try {
     var r = await api('/api/agent/bookings');
     var list = r.bookings || [];
+    bookingsCache = list;
     var tb = document.querySelector('#bkTable tbody');
     if (tb) tb.innerHTML = list.length ? list.map(function (b, i) {
       return '<tr><td>' + (i + 1) + '</td><td>' + (b.date || '-') + '</td><td>' + (b.train || '-') + '</td><td>' + (b.pnr || '-') +
@@ -1689,6 +1692,27 @@ async function loadBookings() {
     var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
     set('bkTotal', t.b); set('bkPaxTotal', t.p); set('bkCommTotal', t.c);
   } catch (e) {}
+}
+function exportBookings() {
+  if (!bookingsCache.length) { toast('Abhi koi booking record nahin'); return; }
+  var rows = [['Date', 'Train', 'PNR', 'Passengers', 'Commission (Rs.)']];
+  bookingsCache.forEach(function (b) {
+    rows.push([b.date || '', b.train || '', b.pnr || '', b.pax || 0, b.commission || 0]);
+  });
+  var tot = { p: 0, c: 0 };
+  bookingsCache.forEach(function (b) { tot.p += (+b.pax || 0); tot.c += (+b.commission || 0); });
+  rows.push([]);
+  rows.push(['TOTAL', '', '', tot.p, tot.c]);
+  var csv = rows.map(function (r) {
+    return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+  }).join('\r\n');
+  var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'booking-record-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  toast('CSV download ho gaya');
 }
 async function addBooking() {
   var g = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
