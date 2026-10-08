@@ -601,6 +601,27 @@ app.get('/api/schedule', requireAuth, (req, res) => {
   res.json({ train: { no: tr[0], name: tr[1], src: tr[2], dst: tr[3], dep: tr[4], arr: tr[5], classes: String(tr[6] || 'SL').split(','), dist: tr[7] }, stops: stops });
 });
 
+app.get('/api/station', requireAuth, (req, res) => {
+  const code = String(req.query.code || '').trim().toUpperCase();
+  if (!code) return res.status(400).json({ error: 'Station code daalein.' });
+  var F = loadFullData();
+  if (!F || !F.seqs) return res.status(503).json({ error: 'Data load ho raha hai - thodi der baad try karein.' });
+  var out = [];
+  for (var q = 0; q < F.seqs.length && out.length < 80; q++) {
+    var pp = String(F.seqs[q]).split(',');
+    for (var z = 0; z < pp.length; z++) {
+      var cc = pp[z].split(' ');
+      if (cc[0] === code) {
+        var trq = F.trains[q];
+        out.push({ no: trq[0], name: trq[1], src: trq[2], dst: trq[3],
+                   time: (cc[1] && cc[1].length === 4) ? cc[1].slice(0, 2) + ':' + cc[1].slice(2) : '--:--' });
+        break;
+      }
+    }
+  }
+  res.json({ station: code, trains: out });
+});
+
 app.get('/api/agent/customers', requireAgent, (req, res) => {
   const customers = db.users
     .filter(u => u.role === 'customer')
