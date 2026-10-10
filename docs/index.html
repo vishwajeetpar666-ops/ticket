@@ -2454,20 +2454,27 @@ async function showRoute(idx, btn) {
     var stops = r.stops || [];
     var s = currentSearch || {}, fi = -1, ti = -1;
     stops.forEach(function (x, k) { if (x.code === s.from && fi < 0) fi = k; if (x.code === s.to && fi >= 0 && ti < 0) ti = k; });
-    var days = 1, prev = null, rows = '', shown = 0;
+    var days = 1, prev = null, rows = '';
     stops.forEach(function (x, k) {
       var m = timeToMin(x.time);
       if (prev !== null && m !== null && m < prev) days++;
       if (m !== null) prev = m;
-      var inSeg = (fi >= 0 && ti > fi) ? (k >= fi && k <= ti) : true;
-      if (!inSeg) return;
-      shown++;
-      var hl = (k === fi || k === ti) ? ' style="font-weight:800;background:rgba(249,115,22,.12)"' : '';
-      rows += '<tr' + hl + '><td>' + x.code + '</td><td>' + x.time + '</td><td>Day ' + days + '</td></tr>';
+      var tag = '';
+      if (k === 0) tag = (LANG === 'hi' ? '\u0936\u0941\u0930\u0941' : 'ORIGIN');
+      if (k === fi && fi > 0) tag = (LANG === 'hi' ? '\u092f\u0939\u093e\u0901 \u091a\u0922\u093c\u0947\u0902' : 'BOARD HERE');
+      if (k === ti) tag = (LANG === 'hi' ? '\u0917\u0902\u0924\u0935\u094d\u092f' : 'DESTINATION');
+      if (k === stops.length - 1 && k !== ti) tag = (LANG === 'hi' ? '\u0905\u0902\u0924' : 'END');
+      var style = '';
+      if (k === fi || k === ti) style = ' style="font-weight:800;background:rgba(249,115,22,.14)"';
+      else if (fi > 0 && k < fi) style = ' style="opacity:.45"';
+      rows += '<tr' + style + '><td>' + x.code + '</td><td>' + x.time + '</td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
     });
+    var origin = stops.length ? stops[0].code : '', dest = stops.length ? stops[stops.length - 1].code : '';
     box.innerHTML =
-      '<div class="note" style="margin:8px 0 6px"><b>' + t.name + ' (' + t.no + ')</b> &mdash; ' + (s.from || '') + ' &rarr; ' + (s.to || '') + ' &middot; ' + shown + (LANG === 'hi' ? ' \u0938\u094d\u091f\u0947\u0936\u0928 (\u092a\u0942\u0930\u0940 \u0930\u0942\u091f ' + stops.length + ')' : ' stations (full route ' + stops.length + ')') + '</div>' +
-      '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928' : 'Station') + '</th><th>' + (LANG === 'hi' ? '\u0938\u092e\u092f' : 'Time') + '</th><th>Day</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="note" style="margin:8px 0 6px"><b>' + t.name + ' (' + t.no + ')</b> &mdash; ' + origin + ' &rarr; ' + dest +
+      ' (' + (LANG === 'hi' ? '\u092a\u0942\u0930\u0940 \u0930\u0942\u091f, ' : 'full route, ') + stops.length + (LANG === 'hi' ? ' \u0938\u094d\u091f\u0947\u0936\u0928)' : ' stops)') +
+      (fi > 0 ? ' &middot; <b>' + (LANG === 'hi' ? '\u092c\u094b\u0930\u094d\u0921\u093f\u0902\u0917: ' : 'Boarding: ') + s.from + '</b>' : '') + '</div>' +
+      '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928' : 'Station') + '</th><th>' + (LANG === 'hi' ? '\u0938\u092e\u092f' : 'Time') + '</th><th>Day</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'Samay reference data se - IRCTC par confirm karein.' : 'Times from reference data - confirm on IRCTC.') + '</div>';
     box.dataset.open = '1';
     btn.textContent = (LANG === 'hi' ? '\u0930\u0942\u091f' : 'ROUTE') + ' \u25b4';
