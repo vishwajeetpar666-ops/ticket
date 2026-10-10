@@ -908,9 +908,9 @@
       <div class="card">
         <div class="card-h" data-en="STATION - WHICH TRAINS STOP HERE" data-hi="स्टेशन - यहाँ कौन सी ट्रेनें रुकती हैं">STATION - WHICH TRAINS STOP HERE</div>
         <div class="card-b">
-          <div class="note">Station code daalo (jaise LDH, PNBE, NDLS) - us station par rukne wali saari trains dikhengi.</div>
+          <div class="note">Station ka <b>naam ya code</b> daalo (jaise <b>New Delhi</b> / <b>NDLS</b>, <b>Bengaluru</b> / <b>SBC</b>) - naam likhne par list aa jayegi; chuno aur trains dekho.</div>
           <div class="form-row" style="grid-template-columns:240px auto">
-            <div><div class="cap" data-en="STATION CODE" data-hi="स्टेशन कोड">STATION CODE</div><input id="stnNo" placeholder="e.g. LDH" style="text-transform:uppercase"></div>
+            <div style="position:relative"><div class="cap" data-en="STATION NAME / CODE" data-hi="स्टेशन नाम / कोड">STATION NAME / CODE</div><input id="stnNo" placeholder="e.g. New Delhi / NDLS" autocomplete="off"><div class="autocomplete" id="stnNoAc"></div></div>
             <button class="btn-search" style="height:38px" onclick="runStation()" data-en="SHOW TRAINS" data-hi="ट्रेनें दिखाएं">SHOW TRAINS</button>
           </div>
           <div id="stnMsg" class="msg"></div>
@@ -1502,6 +1502,11 @@ function buildStateNames() {
   STATIONS.forEach(function (s) { if (s[2]) STATE_NAMES[s[2].toLowerCase()] = s[2]; });
 }
 function acScore(s, q) {
+  var base = acBase(s, q);
+  if (base >= 9) return 9;
+  return s[4] === 1 ? base : base + 5;      /* no-train-data stations sink */
+}
+function acBase(s, q) {
   var n = s[0].toLowerCase(), c = s[1].toLowerCase();
   if (c === q) return 0;
   if (n === q) return 0;
@@ -1563,6 +1568,7 @@ function attachAutocomplete(inputId, acId) {
 }
 attachAutocomplete('fromInput', 'fromAc');
 attachAutocomplete('toInput', 'toAc');
+attachAutocomplete('stnNo', 'stnNoAc');
 function pickStation(inputId, acId, code) {
   var st = STATIONS.filter(function (s) { return s[1] === code; })[0];
   document.getElementById(inputId).value = st[0] + ' (' + st[1] + ')';
@@ -1581,23 +1587,27 @@ function prefillDefaults() {
   var today = new Date(), max = new Date(); max.setDate(max.getDate() + 60);
   d.min = today.toISOString().slice(0, 10); d.max = max.toISOString().slice(0, 10);
 }
-function codeOf(inpId) {
-  var v = document.getElementById(inpId).value.trim();
+function resolveCode(v) {
+  v = String(v || '').trim();
+  if (!v) return null;
   var m = v.match(/\(([A-Za-z0-9]{1,10})\)\s*$/);
   if (m) return m[1].toUpperCase();
   var q = v.toLowerCase();
-  if (!q) return null;
   var exact = null, pref = [];
   for (var i = 0; i < STATIONS.length; i++) {
     var s = STATIONS[i];
-    if (s[4] !== 1) continue;                       /* only stations that have train data */
+    if (s[4] !== 1) continue;
     var n = s[0].toLowerCase();
     if (n === q || s[1].toLowerCase() === q) { exact = s[1]; break; }
     if (n.indexOf(q) === 0) pref.push(s);
   }
   if (exact) return exact;
   if (pref.length) { pref.sort(function (a, b) { return (b[5] || 0) - (a[5] || 0); }); return pref[0][1]; }
-  return null;
+  return v.toUpperCase();
+}
+function codeOf(inpId) {
+  var el = document.getElementById(inpId);
+  return el ? resolveCode(el.value) : null;
 }
 var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function fmtDate(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
@@ -2563,16 +2573,18 @@ async function runSchedule() {
 
 /* ================= STATION - TRAINS STOPPING ================= */
 async function runStation() {
-  var code = ((document.getElementById('stnNo') || {}).value || '').trim().toUpperCase();
-  if (!code) { toast(LANG === 'hi' ? 'Station code daalo' : 'Enter a station code'); return; }
+  var code = resolveCode((document.getElementById('stnNo') || {}).value || '');
+  if (!code) { toast(LANG === 'hi' ? 'Station ka naam ya code daalo' : 'Enter a station name or code'); return; }
   try {
     var r = await api('/api/station?code=' + encodeURIComponent(code));
     var list = r.trains || [];
     var rows = list.map(function (t, i) {
       return '<tr><td>' + (i + 1) + '</td><td><b>' + t.no + '</b> ' + t.name + '</td><td>' + t.src + ' &rarr; ' + t.dst + '</td><td>' + t.time + '</td></tr>';
     }).join('');
+    var stInfo = STATIONS.filter(function (s) { return s[1] === code; })[0];
+    var stLabel = stInfo ? (stInfo[0] + ' (' + stInfo[1] + ')' + (stInfo[2] ? ' &middot; ' + stInfo[2] : '')) : code;
     document.getElementById('stnWrap').innerHTML = list.length
-      ? '<div class="note" style="margin-bottom:6px">' + (LANG === 'hi' ? r.station + ' par ' + list.length + ' trains (reference data).' : list.length + ' trains at ' + r.station + ' (reference data).') + '</div>' +
+      ? '<div class="note" style="margin-bottom:6px">' + (LANG === 'hi' ? stLabel + ' par ' + list.length + ' trains (reference data).' : list.length + ' trains at ' + r.station + ' (reference data).') + '</div>' +
         '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>#</th><th>' + (LANG === 'hi' ? 'ट्रेन' : 'Train') + '</th><th>' + (LANG === 'hi' ? 'रूट' : 'Route') + '</th><th>' + (LANG === 'hi' ? 'समय' : 'Time') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
       : '<div class="empty-state">' + (LANG === 'hi' ? 'Is station ka data nahin mila.' : 'No data found for this station.') + '</div>';
     showMsg('stnMsg', '', true);
@@ -2716,7 +2728,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-3';
+var APP_VERSION = '2026-10-10-4';
 function hardUpdate() {
   try { if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); } } catch (e) {}
   location.replace(location.pathname + '?v=' + Date.now());
