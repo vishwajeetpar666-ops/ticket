@@ -949,6 +949,7 @@
 
   <footer>
     <b>Vishwajeet Parmar Rajput Train Ticket</b> &bull; Owner: Vishwajeet Parmar Rajput &bull; +91 9530646737 &bull; vishwajeetpar666@gmail.com<br>
+    <span id="appVer" style="font-size:11px;color:#8a94a6"></span><br>
     <span data-en="Customer portal for tatkal preparation. Actual booking and payment happen only on the official IRCTC website/app." data-hi="तत्काल की तैयारी का ग्राहक पोर्टल। असली बुकिंग और भुगतान केवल आधिकारिक IRCTC वेबसाइट/ऐप पर होते हैं।">Customer portal for tatkal preparation. Actual booking and payment happen only on the official IRCTC website/app.</span>
   </footer>
 </div>
@@ -2817,7 +2818,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-9';
+var APP_VERSION = '2026-10-10-10';
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
@@ -2834,6 +2835,12 @@ function hardUpdate() {
   try { if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); } } catch (e) {}
   location.replace(location.pathname + '?v=' + Date.now());
 }
+(function showVer() {
+  try {
+    var el = document.getElementById('appVer');
+    if (el) el.textContent = 'App version: ' + APP_VERSION + ' \u2022 ' + (LANG === 'hi' ? 'naya version aane par UPDATE button dikhega' : 'an UPDATE button appears when a new version is live');
+  } catch (e) {}
+})();
 (function checkVersion() {
   fetch('./version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
     if (!d || !d.v || d.v === APP_VERSION) return;
