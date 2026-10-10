@@ -98,6 +98,11 @@
   .autocomplete div:hover{background:#eef2fb;cursor:pointer;}
   .autocomplete .code{color:var(--muted);font-size:11.5px;white-space:nowrap;flex:0 0 auto;}
   .autocomplete div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .update-banner{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:var(--navy);color:#fff;
+    padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;
+    box-shadow:0 -6px 18px rgba(0,0,0,.25);}
+  .update-banner button{background:var(--orange);color:#fff;border:0;border-radius:999px;padding:7px 16px;
+    font-weight:800;font-size:12.5px;cursor:pointer;}
   .autocomplete .ac-head{position:sticky;top:0;background:#f4f6fb;font-size:11px;font-weight:800;color:var(--navy);
     text-transform:uppercase;letter-spacing:.3px;display:block;padding:6px 12px;}
   .swap-btn{background:#fff;border:1px solid #c9cfdc;border-radius:5px;padding:10px 12px;font-size:15px;color:var(--navy);}
@@ -2661,6 +2666,22 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
+var APP_VERSION = '2026-10-10-2';
+function hardUpdate() {
+  try { if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); } } catch (e) {}
+  location.replace(location.pathname + '?v=' + Date.now());
+}
+(function checkVersion() {
+  fetch('./version.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.v || d.v === APP_VERSION) return;
+    if (document.querySelector('.update-banner')) return;
+    var b = document.createElement('div');
+    b.className = 'update-banner';
+    b.innerHTML = '<span>' + (LANG === 'hi' ? '&#127881; Naya version aa gaya hai!' : '&#127881; A new version is available!') + '</span>' +
+      '<button onclick="hardUpdate()">' + (LANG === 'hi' ? 'UPDATE KAREIN' : 'UPDATE NOW') + '</button>';
+    document.body.appendChild(b);
+  }).catch(function () {});
+})();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(function () {}); }
 </script>
 </body>
