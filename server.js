@@ -561,6 +561,21 @@ function estFare(km, cls) {
 }
 function tfmt(t) { return (t && t.length === 4) ? t.slice(0, 2) + ':' + t.slice(2) : '--:--'; }
 
+function segDur(parts, fi, ti) {
+  function tm(s) { var b = String(s).split(' '); if (!b[1] || b[1].length < 4) return null; var hh = +b[1].slice(0, 2), mm = +b[1].slice(2, 4); if (isNaN(hh) || isNaN(mm)) return null; return hh * 60 + mm; }
+  var days = 0, prev = null, start = null, end = null;
+  for (var k = fi; k <= ti; k++) {
+    var t = tm(parts[k]);
+    if (t === null) continue;
+    if (prev !== null && t < prev) days++;      /* time went backwards -> next day */
+    var abs = t + days * 1440;
+    if (k === fi) start = abs;
+    end = abs; prev = t;
+  }
+  if (start === null || end === null) return 0;
+  return end - start;
+}
+
 app.get('/api/trains', requireAuth, (req, res) => {
   const from = String(req.query.from || '').toUpperCase();
   const to = String(req.query.to || '').toUpperCase();
@@ -588,6 +603,7 @@ app.get('/api/trains', requireAuth, (req, res) => {
         list.push({
           no: tr[0], name: tr[1], from: from, to: to,
           dep: tfmt(parts[fi].split(' ')[1]), arr: tfmt(parts[ti].split(' ')[1]),
+          durMin: segDur(parts, fi, ti),
           classes: clsArr, fares: fobj, dist: tr[7] || 0,
           note: 'Runs ' + tr[2] + ' \u2192 ' + tr[3]
         });
