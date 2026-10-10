@@ -390,7 +390,10 @@
 
   .avail-note{font-size:11.5px;color:#aab8cf;padding:7px 14px;border-top:1px solid var(--border);}
   .avail-panel{padding:10px 14px 12px;border-top:1px solid var(--border);background:rgba(249,115,22,.04);}
-  .avail-head{font-size:11.5px;color:#aab8cf;margin-bottom:8px;}
+  .avail-head{font-size:11.5px;color:#aab8cf;margin-bottom:6px;}
+  .avail-status{font-size:10.5px;font-weight:800;letter-spacing:.3px;padding:4px 8px;border-radius:999px;display:inline-block;margin-bottom:8px;}
+  .avail-status.ok{background:rgba(47,125,79,.18);color:#5fd48f;border:1px solid rgba(47,125,79,.5);}
+  .avail-status.off{background:rgba(249,115,22,.12);color:#ffb27a;border:1px solid rgba(249,115,22,.4);}
   .avail-head b{color:#ff9a4d;}
   .avail-load{font-size:12px;color:#aab8cf;}
   .avail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
@@ -1855,6 +1858,9 @@ function renderAvail(av, c, t, s, fmap, d) {
     '<div class="avail-panel">' +
       '<div class="avail-head"><b>' + c + '</b> &middot; ' + (s.from || '') + ' &rarr; ' + (s.to || '') + ' &middot; ' + (s.date || '') +
         ' &middot; ' + (t.no || '') + '</div>' +
+      '<div class="avail-status ' + (live ? 'ok' : 'off') + '">' + (live
+        ? (LANG === 'hi' ? '\u25cf LIVE \u2014 IRCTC agent API se' : '\u25cf LIVE \u2014 from IRCTC agent API')
+        : (LANG === 'hi' ? '\u25cf LIVE SEAT \u2014 AGENT API CONNECT NAHIN HAI' : '\u25cf LIVE SEAT \u2014 AGENT API NOT CONNECTED')) + '</div>' +
       '<div class="avail-grid">' +
         cell(LANG === 'hi' ? '\u0909\u092a\u0932\u092c\u094d\u0927' : 'AVAILABLE', d.avail) +
         cell('RAC', d.rac) +
@@ -2929,7 +2935,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-16';
+var APP_VERSION = '2026-10-10-17';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
