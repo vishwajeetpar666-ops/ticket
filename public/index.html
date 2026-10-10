@@ -1764,6 +1764,7 @@ function trainCard(t, idx, badge) {
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
     '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">' + (fare ? ('\u2248 \u20b9' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
+    '<button class="btn-grey" onclick="shareTrain(' + idx + ')" title="Share">&#128228;</button>' +
     '<button class="btn-grey" onclick="showRoute(' + idx + ', this)" title="Full route">' + (LANG === 'hi' ? 'रूट' : 'ROUTE') + ' ▾</button>' +
     '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK / REQUEST →' : 'BOOK / REQUEST →') + '</button></div><div class="route-box"></div></div>';
 }
@@ -1979,7 +1980,8 @@ function submitRequest() {
     '<div class="warn-box" style="border-color:#2f7d4f"><b>' + (LANG === 'hi' ? 'बुकिंग रिक्वेस्ट तैयार है ✅' : 'Booking request ready ✅') + '</b><br>' +
     (LANG === 'hi' ? 'Neeche se copy karke booking complete karein.' : 'Copy it below to complete the booking.') + '</div>' +
     '<textarea style="width:100%;height:150px;background:#0b1018;color:#dfe6f0;border:1px solid #263149;border-radius:10px;padding:10px;font-size:12px" readonly>' + txt.replace(/</g, '&lt;') + '</textarea>' +
-    '<div style="margin-top:8px"><button class="btn-grey" onclick="copyReq()">&#128203; ' + (LANG === 'hi' ? 'कॉपी करें' : 'COPY REQUEST') + '</button></div>';
+    '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-grey" onclick="copyReq()">&#128203; ' + (LANG === 'hi' ? 'कॉपी करें' : 'COPY REQUEST') + '</button>' +
+    '<button class="btn-grey" onclick="printReq()">&#128424; ' + (LANG === 'hi' ? 'प्रिंट' : 'PRINT') + '</button></div>';
   toast(LANG === 'hi' ? 'Booking request ban gayi' : 'Booking request created');
 }
 function copyReq() {
@@ -2535,6 +2537,30 @@ function checkPnr() {
 }
 
 /* ================= ROUTE VIEW (all stations + times) ================= */
+function shareTrain(idx) {
+  var t = (displayedResults && displayedResults[idx]) ? displayedResults[idx] : null;
+  if (!t) return;
+  var s = currentSearch || {}, cls = t.classes[0], fare = (t.fares && t.fares[cls]) || '';
+  var txt = t.name + ' (' + t.no + ')\n' +
+    (s.from || t.from) + ' \u2192 ' + (s.to || t.to) + '\n' +
+    (t.dep ? 'Dep ' + t.dep : '') + (t.arr ? '  \u2192  Arr ' + t.arr : '') +
+    (t.durMin ? '  (' + fmtDur(t.durMin) + ')' : '') + '\n' +
+    t.dist + ' km' + (fare ? '  \u00b7  \u2248\u20b9' + fare + ' /' + cls : '') + '\n\n' +
+    'Booking: Vishwajeet Parmar Rajput Train Ticket\n' +
+    location.origin + location.pathname + '?from=' + encodeURIComponent(s.from || '') +
+    '&to=' + encodeURIComponent(s.to || '') + '&date=' + encodeURIComponent(s.date || '');
+  window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+}
+function printReq() {
+  var txt = String(window.__reqText || '');
+  if (!txt) { toast('Pehle booking request banao'); return; }
+  var w = window.open('', '_blank');
+  if (!w) { toast('Popup block hai - allow karein'); return; }
+  w.document.write('<title>Booking Request</title><pre style="font:13px/1.55 ui-monospace,monospace;padding:18px;white-space:pre-wrap">' +
+    txt.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</pre>');
+  w.document.close();
+  w.focus(); w.print();
+}
 function timeToMin(s) {
   var b = String(s || '').split(':');
   if (b.length < 2) return null;
@@ -2771,7 +2797,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-6';
+var APP_VERSION = '2026-10-10-7';
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
