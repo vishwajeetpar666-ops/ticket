@@ -37,7 +37,13 @@
   .login-body{padding:22px 24px 26px;}
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px;}
-  .field input{width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;outline:none;background:#fff;}
+  .field   input{width:100%;padding:10px 12px;border:1px solid #263149;border-radius:5px;font-size:13.5px;outline:none;background:#0b1018;color:#e8eefb;}
+  select,textarea{background:#0b1018;color:#e8eefb;border:1px solid #263149;}
+  input::placeholder{color:#7b869c;}
+  input:focus,select:focus,textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(249,115,22,.18);}
+  body.light input,body.light select,body.light textarea{background:#fff !important;color:#1b2437 !important;border-color:#c9cfdc !important;}
+  body.light .station-field input{background:#fff !important;color:#1b2437 !important;border-color:#c9cfdc !important;font-weight:600;}
+  body.light input::placeholder{color:#9aa4b5;}
   .field input:focus{border-color:var(--navy-light);box-shadow:0 0 0 2px rgba(46,74,158,.15);}
   .btn-orange{background:var(--orange);border:none;color:#fff;font-size:14px;font-weight:700;
     padding:11px 20px;border-radius:5px;width:100%;}
@@ -91,7 +97,10 @@
   @media(max-width:900px){.search-grid{grid-template-columns:1fr 1fr;}}
   .station-field{position:relative;}
   .station-field .cap{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;}
-  .station-field input{width:100%;padding:10px 12px;border:1px solid #c9cfdc;border-radius:5px;font-size:13.5px;}
+      .sn{font-size:10.5px;font-weight:500;color:#aab8cf;margin-top:1px;line-height:1.25;}
+  .sn .st{color:#8a94a6;}
+  body.light .sn{color:#5a6478;} body.light .sn .st{color:#8a94a6;}
+  .station-field input{width:100%;padding:11px 13px;border:1.5px solid #46536e;border-radius:9px;font-size:14px;background:#000;color:#ffffff;font-weight:600;letter-spacing:.2px;}
   .autocomplete{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #c9cfdc;
     border-radius:0 0 6px 6px;max-height:240px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 18px rgba(0,0,0,.12);}
   .autocomplete div{padding:9px 12px;font-size:13px;border-bottom:1px solid #eef0f5;display:flex;justify-content:space-between;gap:8px;}
@@ -285,6 +294,9 @@
   .card,.train-card,.stat-box,.timer-box,.login-card,.modal{background:var(--card);border-color:var(--border);}
   .card-h{background:linear-gradient(90deg,#161d2b,#121722);color:#ffffff;border-bottom-color:var(--border);}
   .field input,.search-grid select,.station-field input,.form-row input,.form-row select,.copy-area{background:#0f141f;border-color:#2a3348;color:var(--text);}
+  /* From/To: pure black boxes (owner's request) */
+  .search-grid .station-field input{background:#000;border:1.5px solid #46536e;color:#ffffff;font-weight:600;letter-spacing:0;font-size:13px;padding:11px 12px;}
+  body.light .search-grid .station-field input{background:#fff !important;color:#1b2437 !important;border-color:#c9cfdc !important;}
   .field label,.station-field .cap{color:#aab6cc;}
   table.plist th{background:#161d2b;color:#93a0b8;}
   table.plist td{border-bottom-color:#1e2636;color:var(--text);}
@@ -1652,6 +1664,17 @@ function resolveCode(v) {
   if (pool.length) { pool.sort(function (a, b) { return (b[5] || 0) - (a[5] || 0); }); return pool[0][1]; }
   return v.toUpperCase();
 }
+function stnInfo(code) {
+  for (var i = 0; i < STATIONS.length; i++) { if (STATIONS[i][1] === code) return STATIONS[i]; }
+  return null;
+}
+function stnName(code) { var s = stnInfo(code); return s ? s[0] : ''; }
+function stnState(code) { var s = stnInfo(code); return s ? (s[2] || '') : ''; }
+function stnLine(code) {
+  var s = stnInfo(code);
+  if (!s) return '';
+  return '<div class="sn">' + s[0] + (s[2] ? ' <span class="st">&middot; ' + s[2] + '</span>' : '') + '</div>';
+}
 function stationByCode(code) {
   for (var i = 0; i < STATIONS.length; i++) { if (STATIONS[i][1] === code) return STATIONS[i]; }
   return null;
@@ -1779,9 +1802,9 @@ function trainCard(t, idx, badge) {
       ((badge || '').indexOf('FASTEST') >= 0 ? ' <span class="badge fast">&#9889; ' + (LANG === 'hi' ? 'सबसे तेज़' : 'FASTEST') + '</span>' : '') +
       ((badge || '').indexOf('SHORTEST') >= 0 ? ' <span class="badge short">&#128205; ' + (LANG === 'hi' ? 'सबसे छोटा रास्ता' : 'SHORTEST') + '</span>' : '') +
       '</div><span class="note">' + t.note + '</span></div>' +
-    '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn">' + t.from + '</div></div>' +
+    '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn"><b>' + t.from + '</b>' + stnLine(t.from) + '</div></div>' +
     '<div class="dur">' + t.dist + ' km' + ((t.durMin || durMins(t.dep, t.arr)) ? '<br>' + fmtDur(t.durMin || durMins(t.dep, t.arr)) : '') + '</div>' +
-    '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
+    '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn"><b>' + t.to + '</b>' + stnLine(t.to) + '</div></div></div>' +
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
     '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">' + (fare ? ('\u2248 \u20b9' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
@@ -1849,7 +1872,8 @@ function kitBoardOptions() {
   for (var j = 0; j < kitStops.length; j++) { if (kitStops[j].code === s.to) { bi = j; break; } }
   var list = (ai >= 0 && bi > ai) ? kitStops.slice(ai, bi + 1) : kitStops;
   return list.map(function (x) {
-    return '<option value="' + x.code + '" data-t="' + x.time + '">' + x.code + ' (' + x.time + ')</option>';
+    var _n = stnName(x.code);
+    return '<option value="' + x.code + '" data-t="' + x.time + '">' + x.code + (_n ? ' \u2014 ' + _n : '') + ' (' + x.time + ')</option>';
   }).join('');
 }
 function kitBoardPick() {
@@ -2620,7 +2644,7 @@ async function showRoute(idx, btn) {
       var style = '';
       if (k === fi || k === ti) style = ' style="font-weight:800;background:rgba(249,115,22,.14)"';
       else if (fi > 0 && k < fi) style = ' style="opacity:.45"';
-      rows += '<tr' + style + '><td>' + x.code + '</td><td>' + x.time + '</td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
+      rows += '<tr' + style + '><td><b>' + x.code + '</b>' + stnLine(x.code) + '</td><td>' + x.time + '</td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
     });
     var origin = stops.length ? stops[0].code : '', dest = stops.length ? stops[stops.length - 1].code : '';
     box.innerHTML =
@@ -2818,7 +2842,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-10';
+var APP_VERSION = '2026-10-10-11';
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
