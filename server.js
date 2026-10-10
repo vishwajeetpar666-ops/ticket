@@ -582,6 +582,15 @@ function segDur(parts, fi, ti) {
   return end - start;
 }
 
+app.get('/api/avail', requireAuth, (req, res) => {
+  // Live seat availability (AVL / RAC / WL) comes ONLY from the IRCTC agent (RSP) API.
+  // Until the owner's RSP/agent API is connected this returns live:false so the UI shows
+  // an honest message instead of fake numbers.
+  const train = String(req.query.train || '').trim();
+  if (!train) return res.status(400).json({ error: 'Train number required.' });
+  const hasAgent = !!(process.env.IRCTC_AGENT_ID && process.env.IRCTC_AGENT_KEY);
+  return res.json({ live: false, reason: hasAgent ? 'api-not-connected' : 'no-agent-api' });
+});
 app.get('/api/trains', requireAuth, (req, res) => {
   const from = String(req.query.from || '').toUpperCase();
   const to = String(req.query.to || '').toUpperCase();
