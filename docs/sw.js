@@ -1,5 +1,5 @@
 /* VP Ticket - service worker (offline shell + app-like) */
-var CACHE = 'vpticket-v1';
+var CACHE = 'vpticket-v2';
 var SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './stations.json'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
