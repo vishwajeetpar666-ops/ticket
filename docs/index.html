@@ -2019,7 +2019,8 @@ async function kitRender() {
     var n4 = sel4.length || 1;
     var fare4 = ((kitTrain.fares && kitTrain.fares[kitCls]) || 0);
     var conv4 = (['1A', '2A', '3A', '3E', 'CC'].indexOf(kitCls) >= 0 ? 35.4 : 11.8);
-    var total4 = Math.round(fare4 * n4 + conv4 * n4 + charge * n4);
+    var ins4 = 0.45;   /* IRCTC travel insurance premium (incl. GST) - per ticket, as on a real ERS */
+    var total4 = Math.round(fare4 * n4 + conv4 * n4 + charge * n4 + ins4);
     window.__kitTotal = total4;
     window.__kitCharge = charge;
     var payReady = !!(st.payKey && st.paySecret);
@@ -2036,6 +2037,7 @@ async function kitRender() {
       '<div class="pax-row"><b>IRCTC convenience fee (approx)</b><span class="note">Rs.' + conv4 + ' &times; ' + n4 + ' = <b>Rs.' + Math.round(conv4 * n4) + '</b></span></div>' +
       '<div class="pax-row"><b>Fare (indicative)</b><span class="note">Rs.' + fare4 + ' &times; ' + n4 + ' = <b>Rs.' + (fare4 * n4) + '</b></span></div>' +
       '<div class="pax-row"><b>Your service charge</b><span class="note">Rs.' + charge + ' &times; ' + n4 + ' = <b>Rs.' + (charge * n4) + '</b></span></div>' +
+      '<div class="pax-row"><b>Travel insurance premium (incl. GST)</b><span class="note">Rs.' + ins4 + ' &times; 1 ticket = <b>Rs.' + ins4 + '</b></span></div>' +
       '<div class="pax-row" style="border-top:1px solid var(--border)"><b>Estimated total</b><span class="note" style="font-size:15px;color:#ff9a4d"><b>Rs.' + total4 + '</b></span></div>' +
       '<div style="margin:12px 0"><b>Payment method</b>' +
       '<div class="pax-row"><input type="radio" name="paym" checked> UPI / QR &nbsp; <input type="radio" name="paym"> Debit / Credit Card &nbsp; <input type="radio" name="paym"> Net Banking</div></div>' +
@@ -2959,7 +2961,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-18';
+var APP_VERSION = '2026-10-10-19';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
