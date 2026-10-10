@@ -98,6 +98,10 @@
   .autocomplete div:hover{background:#eef2fb;cursor:pointer;}
   .autocomplete .code{color:var(--muted);font-size:11.5px;white-space:nowrap;flex:0 0 auto;}
   .autocomplete div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .err-guard{position:fixed;left:12px;right:12px;bottom:12px;z-index:9998;background:#7f1d1d;color:#fff;
+    padding:10px 14px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:12px;
+    font-size:12.5px;box-shadow:0 8px 22px rgba(0,0,0,.3);}
+  .err-guard button{background:#fff;color:#7f1d1d;border:0;border-radius:999px;padding:6px 14px;font-weight:800;cursor:pointer;}
   .update-banner{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:var(--navy);color:#fff;
     padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;
     box-shadow:0 -6px 18px rgba(0,0,0,.25);}
@@ -1471,6 +1475,7 @@ function enterApp(user) {
   if (isAgent) loadSettings();
   loadPassengers();
   prefillDefaults();
+setTimeout(applyDeepLink, 900);
   if (isAgent) loadAgent();
   if (isAgent) loadEmployees();
   if (isAgent) loadBookings();
@@ -1578,6 +1583,24 @@ function swapStations() {
   var a = document.getElementById('fromInput').value;
   document.getElementById('fromInput').value = document.getElementById('toInput').value;
   document.getElementById('toInput').value = a;
+}
+function applyDeepLink() {
+  try {
+    var q = new URLSearchParams(location.search);
+    var f = q.get('from'), t = q.get('to'), d = q.get('date');
+    if (f) document.getElementById('fromInput').value = f;
+    if (t) document.getElementById('toInput').value = t;
+    if (d) document.getElementById('dateInput').value = d;
+    if (f && t) { try { runSearch(); } catch (e) {} }
+  } catch (e) {}
+}
+function syncDeepLink() {
+  try {
+    var s = currentSearch || {};
+    if (!s.from || !s.to) return;
+    var q = '?from=' + encodeURIComponent(s.from) + '&to=' + encodeURIComponent(s.to) + '&date=' + encodeURIComponent(s.date || '');
+    history.replaceState(null, '', location.pathname + q);
+  } catch (e) {}
 }
 function prefillDefaults() {
   if (!document.getElementById('fromInput').value) document.getElementById('fromInput').value = 'LUDHIANA JUNCTION (LDH)';
@@ -2728,7 +2751,19 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-4';
+var APP_VERSION = '2026-10-10-5';
+window.addEventListener('error', function () {
+  try {
+    if (document.querySelector('.err-guard')) return;
+    var d = document.createElement('div');
+    d.className = 'err-guard';
+    d.innerHTML = '<span>' + (LANG === 'hi' ? 'Kuch technical dikkat aayi.' : 'A small technical hiccup occurred.') + '</span>' +
+      '<button onclick="location.reload()">' + (LANG === 'hi' ? 'RELOAD' : 'RELOAD') + '</button>';
+    document.body.appendChild(d);
+    setTimeout(function () { try { d.remove(); } catch (e) {} }, 7000);
+  } catch (e) {}
+});
+window.addEventListener('unhandledrejection', function () { /* silent: individual features already show messages */ });
 function hardUpdate() {
   try { if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); } } catch (e) {}
   location.replace(location.pathname + '?v=' + Date.now());
