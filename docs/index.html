@@ -1374,7 +1374,7 @@ function applyLang(){
     if (els[i].getAttribute('data-html') === '1') els[i].innerHTML = v; else els[i].textContent = v;
   }
 }
-function toggleLang(){ LANG = (LANG === 'hi' ? 'en' : 'hi'); localStorage.setItem('vpr_lang', LANG); applyLang(); toast(LANG === 'hi' ? 'भाषा हिंदी हो गई' : 'Language set to English'); }
+function toggleLang(){ LANG = (LANG === 'hi' ? 'en' : 'hi'); localStorage.setItem('vpr_lang', LANG); applyLang(); syncHtmlLang(); toast(LANG === 'hi' ? 'भाषा हिंदी हो गई' : 'Language set to English'); }
 function toast(t){ var el = document.getElementById('toast'); el.textContent = t; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 3000); }
 function showMsg(id, txt, ok){ var el = document.getElementById(id); el.textContent = txt; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
 async function api(url, opts) {
@@ -2857,7 +2857,33 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-13';
+var APP_VERSION = '2026-10-10-14';
+/* ---- accessibility: labels + live regions (screen readers) ---- */
+(function addAria() {
+  var map = {
+    fromInput: 'From station', toInput: 'To station', dateInput: 'Travel date', quotaInput: 'Quota',
+    schNo: 'Train number', stnNo: 'Station name or code', lsNo: 'Train number for live status', lsDate: 'Live status date',
+    pnrInput: 'PNR number', kitIrtcUser: 'IRCTC username', liUser: 'Login user name', liPass: 'Login password',
+    agId: 'Agent user name', agPass: 'Agent password', otpInput: 'OTP',
+    pfName: 'Passenger name', pfAge: 'Passenger age', empName: 'Employee name'
+  };
+  try {
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && !el.getAttribute('aria-label')) el.setAttribute('aria-label', map[id]);
+    });
+    document.querySelectorAll('.msg').forEach(function (el) { el.setAttribute('aria-live', 'polite'); });
+    ['fromAc', 'toAc', 'stnNoAc'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.setAttribute('role', 'listbox'); el.setAttribute('aria-label', 'Station suggestions'); }
+    });
+    var m = document.getElementById('kitModal');
+    if (m) { m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Booking'); }
+    document.querySelectorAll('main section').forEach(function (s) { if (!s.getAttribute('role')) s.setAttribute('role', 'region'); });
+  } catch (e) {}
+})();
+function syncHtmlLang() { try { document.documentElement.lang = (typeof LANG !== 'undefined' && LANG === 'hi') ? 'hi' : 'en'; } catch (e) {} }
+setTimeout(syncHtmlLang, 500);
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
