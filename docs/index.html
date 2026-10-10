@@ -1257,6 +1257,7 @@
             clsArr.forEach(function (c) { fobj[c] = estFare(tr[7] || 0, c); });
             list.push({ no: tr[0], name: tr[1], from: from, to: to,
                         dep: tfmt(parts[fi].split(' ')[1]), arr: tfmt(parts[ti].split(' ')[1]),
+                        durMin: segDur(parts, fi, ti),
                         classes: clsArr, fares: fobj, dist: tr[7] || 0,
                         note: 'Runs ' + tr[2] + ' \u2192 ' + tr[3] });
           }
@@ -1589,7 +1590,7 @@ function renderResults(trains) {
   if (sortMode === 'dep') list.sort(function (a, b) { return String(a.dep || '').localeCompare(String(b.dep || '')); });
   else if (sortMode === 'no') list.sort(function (a, b) { return String(a.no).localeCompare(String(b.no)); });
   else if (sortMode === 'dist') list.sort(function (a, b) { return (b.dist || 0) - (a.dist || 0); });
-  else if (sortMode === 'dur') list.sort(function (a, b) { return durMins(a.dep, a.arr) - durMins(b.dep, b.arr); });
+  else if (sortMode === 'dur') list.sort(function (a, b) { return (a.durMin || durMins(a.dep, a.arr)) - (b.durMin || durMins(b.dep, b.arr)); });
   displayedResults = list;
   var head = '<div class="results-head"><span class="cnt">' + list.length + (LANG === 'hi' ? ' परिणाम' : ' Results') + ': ' + s.from + ' &rarr; ' + s.to + ' | ' + fmtDate(new Date(s.date)) + '</span>' +
     '<button class="btn-book" style="margin-left:auto" onclick="openKit(0)">' + (LANG === 'hi' ? 'BOOK / REQUEST →' : 'BOOK / REQUEST →') + '</button></div>';
@@ -1615,7 +1616,7 @@ function renderResults(trains) {
   }
   var fastest = null, shortest = null;
   list.forEach(function (t) {
-    var dm = durMins(t.dep, t.arr);
+    var dm = t.durMin || durMins(t.dep, t.arr);
     if (dm && (!fastest || dm < fastest.dm)) fastest = { no: t.no, dm: dm };
     if (t.dist && (!shortest || t.dist < shortest.dist)) shortest = { no: t.no, dist: t.dist };
   });
@@ -1635,6 +1636,21 @@ function renderResults(trains) {
 }
 function setSort(m) { sortMode = m; renderResults(null); }
 function setClsFilter(c) { filterCls = c; renderResults(null); }
+function segDur(parts, fi, ti) {
+  function tm(s) { var b = String(s).split(' '); if (!b[1] || b[1].length < 4) return null; var hh = +b[1].slice(0, 2), mm = +b[1].slice(2, 4); if (isNaN(hh) || isNaN(mm)) return null; return hh * 60 + mm; }
+  var days = 0, prev = null, start = null, end = null;
+  for (var k = fi; k <= ti; k++) {
+    var t = tm(parts[k]);
+    if (t === null) continue;
+    if (prev !== null && t < prev) days++;      /* time went backwards -> next day */
+    var abs = t + days * 1440;
+    if (k === fi) start = abs;
+    end = abs; prev = t;
+  }
+  if (start === null || end === null) return 0;
+  return end - start;
+}
+
 function durMins(dep, arr) {
   if (!dep || !arr || dep === '--:--' || arr === '--:--') return 0;
   var d = String(dep).split(':'), a = String(arr).split(':');
@@ -1659,7 +1675,7 @@ function trainCard(t, idx, badge) {
       ((badge || '').indexOf('SHORTEST') >= 0 ? ' <span class="badge short">&#128205; ' + (LANG === 'hi' ? 'सबसे छोटा रास्ता' : 'SHORTEST') + '</span>' : '') +
       '</div><span class="note">' + t.note + '</span></div>' +
     '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn">' + t.from + '</div></div>' +
-    '<div class="dur">' + t.dist + ' km' + (durMins(t.dep, t.arr) ? '<br>' + fmtDur(durMins(t.dep, t.arr)) : '') + '</div>' +
+    '<div class="dur">' + t.dist + ' km' + ((t.durMin || durMins(t.dep, t.arr)) ? '<br>' + fmtDur(t.durMin || durMins(t.dep, t.arr)) : '') + '</div>' +
     '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn">' + t.to + '</div></div></div>' +
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
