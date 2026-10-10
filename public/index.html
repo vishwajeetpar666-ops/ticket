@@ -1612,6 +1612,7 @@ function renderResults(trains) {
       (LANG === 'hi' ? 'इस फ़िल्टर में कोई ट्रेन नहीं मिली। फ़िल्टर बदलें, या नीचे <b>VIA ROUTES</b> देखें।' : 'No trains match this filter. Change the filter, or try <b>VIA ROUTES</b> below.') +
       '<div style="margin-top:12px"><button class="btn-grey" onclick="runVia()">&#128257; ' + (LANG === 'hi' ? 'CONNECTING (VIA) ROUTES दिखाएं' : 'SHOW CONNECTING (VIA) ROUTES') + '</button></div>' +
       '</div></div>';
+    setTimeout(function () { try { runVia(); } catch (e) {} }, 200);
     return;
   }
   var fastest = null, shortest = null;
@@ -1680,7 +1681,8 @@ function trainCard(t, idx, badge) {
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
     '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">' + (fare ? ('\u2248 \u20b9' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
-    '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK / REQUEST →' : 'BOOK / REQUEST →') + '</button></div></div>';
+    '<button class="btn-grey" onclick="showRoute(' + idx + ', this)" title="Full route">' + (LANG === 'hi' ? 'रूट' : 'ROUTE') + ' ▾</button>' +
+    '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK / REQUEST →' : 'BOOK / REQUEST →') + '</button></div><div class="route-box"></div></div>';
 }
 function pickCls(btn, c, idx) {
   var card = btn.closest('.train-card');
@@ -2424,6 +2426,55 @@ function checkPnr() {
   if (v.length !== 10) { showMsg('pnrMsg', LANG === 'hi' ? 'PNR 10 ank ka hota hai.' : 'A PNR is 10 digits.', false); return; }
   showMsg('pnrMsg', LANG === 'hi' ? 'IRCTC par PNR enquiry khul rahi hai...' : 'Opening IRCTC PNR enquiry...', true);
   window.open('https://www.irctc.co.in/nget/pnr-enquiry', '_blank', 'noopener');
+}
+
+/* ================= ROUTE VIEW (all stations + times) ================= */
+function timeToMin(s) {
+  var b = String(s || '').split(':');
+  if (b.length < 2) return null;
+  var hh = +b[0], mm = +b[1];
+  if (isNaN(hh) || isNaN(mm)) return null;
+  return hh * 60 + mm;
+}
+async function showRoute(idx, btn) {
+  var t = (displayedResults && displayedResults[idx]) ? displayedResults[idx] : null;
+  if (!t) return;
+  var card = btn.closest('.train-card');
+  var box = card ? card.querySelector('.route-box') : null;
+  if (!box) return;
+  if (box.dataset.open === '1') {
+    box.innerHTML = ''; box.dataset.open = '0';
+    btn.textContent = (LANG === 'hi' ? '\u0930\u0942\u091f' : 'ROUTE') + ' \u25be';
+    return;
+  }
+  var label = btn.textContent;
+  btn.textContent = '...';
+  try {
+    var r = await api('/api/schedule?no=' + encodeURIComponent(t.no));
+    var stops = r.stops || [];
+    var s = currentSearch || {}, fi = -1, ti = -1;
+    stops.forEach(function (x, k) { if (x.code === s.from && fi < 0) fi = k; if (x.code === s.to && fi >= 0 && ti < 0) ti = k; });
+    var days = 1, prev = null, rows = '', shown = 0;
+    stops.forEach(function (x, k) {
+      var m = timeToMin(x.time);
+      if (prev !== null && m !== null && m < prev) days++;
+      if (m !== null) prev = m;
+      var inSeg = (fi >= 0 && ti > fi) ? (k >= fi && k <= ti) : true;
+      if (!inSeg) return;
+      shown++;
+      var hl = (k === fi || k === ti) ? ' style="font-weight:800;background:rgba(249,115,22,.12)"' : '';
+      rows += '<tr' + hl + '><td>' + x.code + '</td><td>' + x.time + '</td><td>Day ' + days + '</td></tr>';
+    });
+    box.innerHTML =
+      '<div class="note" style="margin:8px 0 6px"><b>' + t.name + ' (' + t.no + ')</b> &mdash; ' + (s.from || '') + ' &rarr; ' + (s.to || '') + ' &middot; ' + shown + (LANG === 'hi' ? ' \u0938\u094d\u091f\u0947\u0936\u0928 (\u092a\u0942\u0930\u0940 \u0930\u0942\u091f ' + stops.length + ')' : ' stations (full route ' + stops.length + ')') + '</div>' +
+      '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928' : 'Station') + '</th><th>' + (LANG === 'hi' ? '\u0938\u092e\u092f' : 'Time') + '</th><th>Day</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'Samay reference data se - IRCTC par confirm karein.' : 'Times from reference data - confirm on IRCTC.') + '</div>';
+    box.dataset.open = '1';
+    btn.textContent = (LANG === 'hi' ? '\u0930\u0942\u091f' : 'ROUTE') + ' \u25b4';
+  } catch (e) {
+    btn.textContent = label;
+    toast(LANG === 'hi' ? 'Route load nahin hua' : 'Could not load route');
+  }
 }
 
 /* ================= TRAIN SCHEDULE ================= */
