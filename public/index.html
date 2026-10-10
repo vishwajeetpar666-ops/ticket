@@ -863,6 +863,10 @@
     </section>
     <section id="view-help" class="hidden">
       <div class="card">
+        <div class="card-h" data-en="SYSTEM STATUS" data-hi="सिस्टम स्टेटस">SYSTEM STATUS</div>
+        <div class="card-b" id="sysStatus"><div class="note">Loading…</div></div>
+      </div>
+      <div class="card">
         <div class="card-h" data-en="HOW TO BOOK - 4 STEPS" data-hi="बुकिंग कैसे करें - 4 स्टेप">HOW TO BOOK - 4 STEPS</div>
         <div class="card-b">
           <div class="pax-row"><b>1. Passenger Master List</b><span class="note">Apne sabhi yatri ek baar save karo - naam (ID ke anusaar), umar, gender, berth, khana. Baar-baar kaam khatam.</span></div>
@@ -1553,12 +1557,38 @@ setTimeout(applyDeepLink, 900);
   resetIdle();
   showView('trains');
 }
+async function renderSysStatus() {
+  var el = document.getElementById('sysStatus');
+  if (!el) return;
+  var st = {};
+  try { st = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  var seatOk = !!st.availUrl;
+  var payOk = false;
+  try { var pc = await api('/api/pay/config'); payOk = !!(pc && pc.enabled); } catch (e) {}
+  var withState = STATIONS.filter(function (s) { return s[2]; }).length;
+  var active = STATIONS.filter(function (s) { return s[4] === 1; }).length;
+  function row(k, v, ok) {
+    return '<div class="pax-row"><b>' + k + '</b><span class="note" style="color:' + (ok === null ? '#aab8cf' : (ok ? '#5fd48f' : '#ffb27a')) + ';font-weight:700">' + v + '</span></div>';
+  }
+  el.innerHTML =
+    row('App version', APP_VERSION, null) +
+    row((LANG === 'hi' ? 'स्टेशन लोड' : 'Stations loaded'), STATIONS.length + ' (' + withState + ' ' + (LANG === 'hi' ? 'राज्य सहित' : 'with state') + ', ' + active + ' ' + (LANG === 'hi' ? 'ट्रेन डेटा सहित' : 'with train data') + ')', true) +
+    row((LANG === 'hi' ? 'ट्रेन सर्च' : 'Train search'), (LANG === 'hi' ? 'चालू' : 'WORKING'), true) +
+    row((LANG === 'hi' ? 'रूट + बोर्डिंग + ARR/DEP' : 'Route + boarding + ARR/DEP'), (LANG === 'hi' ? 'चालू' : 'WORKING'), true) +
+    row((LANG === 'hi' ? 'बुकिंग kit + पेमेंट पेज' : 'Booking kit + payment page'), (LANG === 'hi' ? 'चालू' : 'WORKING'), true) +
+    row((LANG === 'hi' ? 'लाइव सीट (AVL/RAC/WL)' : 'Live seats (AVL/RAC/WL)'), seatOk ? (LANG === 'hi' ? 'जुड़ गया — LIVE' : 'CONNECTED — LIVE') : (LANG === 'hi' ? 'नहीं — IRCTC agent API chahiye' : 'NOT CONNECTED — needs IRCTC agent API'), seatOk) +
+    row((LANG === 'hi' ? 'ओनलाइन पेमेंट' : 'Online payment'), payOk ? (LANG === 'hi' ? 'जुड़ गया' : 'CONNECTED') : (LANG === 'hi' ? 'नहीं — Razorpay keys chahiye' : 'NOT CONNECTED — needs Razorpay keys'), payOk) +
+    '<div class="note" style="margin-top:8px">' + (LANG === 'hi'
+      ? 'Seat aur payment dono ke liye <b>authorised keys</b> chahiye - Integrations page par daalo.'
+      : 'Both seats and payment need <b>authorised keys</b> - add them on the INTEGRATIONS page.') + '</div>';
+}
 function showView(v) {
   ['trains', 'quick', 'agent', 'settings', 'ai', 'help', 'sched'].forEach(function (x) {
     var el = document.getElementById('view-' + x); if (el) el.classList.toggle('hidden', x !== v);
     var nv = document.getElementById('nv-' + x); if (nv) nv.classList.toggle('active', x === v);
   });
   if (v === 'settings') gateSettings();
+  if (v === 'help') { try { renderSysStatus(); } catch (e) {} }
   window.scrollTo(0, 0);
 }
 
@@ -2961,7 +2991,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-19';
+var APP_VERSION = '2026-10-10-20';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
