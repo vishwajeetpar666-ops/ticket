@@ -1616,17 +1616,33 @@ function resolveCode(v) {
   var m = v.match(/\(([A-Za-z0-9]{1,10})\)\s*$/);
   if (m) return m[1].toUpperCase();
   var q = v.toLowerCase();
-  var exact = null, pref = [];
+  var exact = null, pref = [], word = [];
   for (var i = 0; i < STATIONS.length; i++) {
     var s = STATIONS[i];
     if (s[4] !== 1) continue;
     var n = s[0].toLowerCase();
     if (n === q || s[1].toLowerCase() === q) { exact = s[1]; break; }
-    if (n.indexOf(q) === 0) pref.push(s);
+    if (n.indexOf(q) === 0) { pref.push(s); continue; }
+    var ws = n.replace(/[^a-z0-9]+/g, ' ').split(' ');
+    for (var w = 0; w < ws.length; w++) { if (ws[w].indexOf(q) === 0) { word.push(s); break; } }
   }
   if (exact) return exact;
-  if (pref.length) { pref.sort(function (a, b) { return (b[5] || 0) - (a[5] || 0); }); return pref[0][1]; }
+  var pool = pref.length ? pref : word;
+  if (pool.length) { pool.sort(function (a, b) { return (b[5] || 0) - (a[5] || 0); }); return pool[0][1]; }
   return v.toUpperCase();
+}
+function stationByCode(code) {
+  for (var i = 0; i < STATIONS.length; i++) { if (STATIONS[i][1] === code) return STATIONS[i]; }
+  return null;
+}
+function normalizeStationInput(inpId) {
+  var el = document.getElementById(inpId);
+  if (!el) return;
+  var v = String(el.value || '').trim();
+  if (!v || /\([A-Za-z0-9]{1,10}\)\s*$/.test(v)) return;
+  var code = resolveCode(v);
+  var st = stationByCode(code);
+  if (st) el.value = st[0] + ' (' + st[1] + ')';
 }
 function codeOf(inpId) {
   var el = document.getElementById(inpId);
@@ -1636,6 +1652,8 @@ var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oc
 function fmtDate(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
 var currentSearch = null;
 async function runSearch() {
+  normalizeStationInput('fromInput');
+  normalizeStationInput('toInput');
   var from = codeOf('fromInput'), to = codeOf('toInput');
   if (!from || !to) { showMsg('searchMsg', LANG === 'hi' ? 'स्टेशन लिस्ट से चुनें (नाम लिखकर सुझाव पर क्लिक करें)।' : 'Please select From/To stations from the suggestion list.', false); return; }
   showMsg('searchMsg', '');
@@ -2597,6 +2615,8 @@ async function runSchedule() {
 /* ================= STATION - TRAINS STOPPING ================= */
 async function runStation() {
   var code = resolveCode((document.getElementById('stnNo') || {}).value || '');
+  var _st = stationByCode(code);
+  if (_st) document.getElementById('stnNo').value = _st[0] + ' (' + _st[1] + ')';
   if (!code) { toast(LANG === 'hi' ? 'Station ka naam ya code daalo' : 'Enter a station name or code'); return; }
   try {
     var r = await api('/api/station?code=' + encodeURIComponent(code));
@@ -2751,7 +2771,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-5';
+var APP_VERSION = '2026-10-10-6';
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
