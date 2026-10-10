@@ -97,7 +97,15 @@
   @media(max-width:900px){.search-grid{grid-template-columns:1fr 1fr;}}
   .station-field{position:relative;}
   .station-field .cap{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;}
-      .kit-add{margin:10px 0 6px;padding:10px;border:1px dashed #46536e;border-radius:10px;background:rgba(249,115,22,.04);}
+      .pay-open{margin-top:12px;padding:12px;border:1px solid #2f7d4f;border-radius:12px;background:rgba(47,125,79,.08);}
+  .pay-head{font-weight:800;font-size:13px;margin-bottom:6px;color:#5fd48f;}
+  .pay-total{font-size:14px;margin-bottom:8px;}
+  .pay-total b{font-size:18px;color:#ff9a4d;}
+  .pay-methods{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;}
+  .pay-methods label{font-size:12px;display:flex;align-items:center;gap:5px;}
+  body.light .pay-open{background:#f0fbf4;border-color:#9ad4b4;}
+  body.light .pay-head{color:#14804a;}
+  .kit-add{margin:10px 0 6px;padding:10px;border:1px dashed #46536e;border-radius:10px;background:rgba(249,115,22,.04);}
   .kit-add .cap{margin-bottom:6px;}
   .sn{font-size:10.5px;font-weight:500;color:#aab8cf;margin-top:1px;line-height:1.25;}
   .rn{font-weight:800;}
@@ -1984,11 +1992,14 @@ async function kitRender() {
     var fare4 = ((kitTrain.fares && kitTrain.fares[kitCls]) || 0);
     var conv4 = (['1A', '2A', '3A', '3E', 'CC'].indexOf(kitCls) >= 0 ? 35.4 : 11.8);
     var total4 = Math.round(fare4 * n4 + conv4 * n4 + charge * n4);
+    window.__kitTotal = total4;
+    window.__kitCharge = charge;
     var payReady = !!(st.payKey && st.paySecret);
     var kycReady = !!(st.payPan && st.payBank && st.payIfsc && st.payHolder);
     var srvPay = { enabled: false };
     try { srvPay = await api('/api/pay/config'); } catch (e) {}
     var live = !!(srvPay && srvPay.enabled);
+    window.__payLive = live;
     var payBtn = live
       ? '<button class="btn-book" onclick="startPay(' + (total4 * 100) + ')">PAY Rs.' + total4 + ' &amp; BOOK</button>'
       : '<button class="btn-book" onclick="submitRequest()">SUBMIT BOOKING REQUEST</button>';
@@ -2009,6 +2020,45 @@ async function kitRender() {
     foot.innerHTML = '<button class="btn-grey" onclick="kitBack()">&#8592; BACK</button>' +
       '<button class="btn-grey" onclick="showView(\'settings\');closeKit();">OPEN INTEGRATIONS</button>' + payBtn;
   }
+}
+function payPanelHTML() {
+  var amt = window.__kitTotal || 0;
+  var charge = window.__kitCharge || 5;
+  var live = !!window.__payLive;
+  var s = currentSearch || {};
+  return '<div class="pay-open">' +
+    '<div class="pay-head">' + (LANG === 'hi' ? '\ud83d\udcb3 \u092a\u0947\u092e\u0947\u0902\u091f' : '\ud83d\udcb3 PAYMENT') + '</div>' +
+    '<div class="pay-total">' + (LANG === 'hi' ? '\u0915\u0941\u0932 \u0930\u093e\u0936\u093f' : 'Amount payable') + ': <b>\u20b9' + amt + '</b> <span class="note">(' + (LANG === 'hi' ? '\u092f\u093e\u0924\u094d\u0930\u0940 \u0915\u0940 \u0938\u0902\u0916\u094d\u092f\u093e \u0915\u0947 \u0905\u0928\u0941\u0938\u093e\u0930' : 'as per passengers') + ')</span></div>' +
+    '<div class="pay-methods">' +
+      '<label><input type="radio" name="paym2" checked> UPI / QR</label>' +
+      '<label><input type="radio" name="paym2"> ' + (LANG === 'hi' ? '\u0915\u093e\u0930\u094d\u0921' : 'Card') + '</label>' +
+      '<label><input type="radio" name="paym2"> ' + (LANG === 'hi' ? '\u0928\u0947\u091f \u092c\u0948\u0902\u0915\u093f\u0902\u0917' : 'Net Banking') + '</label>' +
+      '<label><input type="radio" name="paym2"> ' + (LANG === 'hi' ? '\u0928\u0915\u0926 / UPI \u0938\u0940\u0927\u093e' : 'Cash / UPI directly') + '</label>' +
+    '</div>' +
+    (live
+      ? '<button class="btn-book" style="width:100%" onclick="startPay(' + (amt * 100) + ')">\ud83d\udcb3 ' + (LANG === 'hi' ? '\u0905\u092d\u0940 \u092a\u0947\u092e\u0947\u0902\u091f \u0915\u0930\u0947\u0902' : 'PAY NOW') + ' \u20b9' + amt + '</button>'
+      : '<div class="warn-box" style="margin:10px 0"><b>' + (LANG === 'hi' ? 'Online payment gateway connect nahin hai.' : 'Online payment gateway is not connected.') + '</b><br>' +
+        (LANG === 'hi' ? 'Razorpay keys daalo (Integrations) - phir yahin PAY button se UPI/card payment hoga. Tab tak customer se nakad/UPI lekar neeche \u201cMARK PAID\u201d dabao.' : 'Add your Razorpay keys (Integrations) - then this PAY button takes UPI/card. Until then, collect cash/UPI and press MARK PAID below.') + '</div>' +
+        '<button class="btn-grey" style="width:100%;margin-bottom:8px" onclick="switchTab(\'integr\')">\u2699\ufe0f ' + (LANG === 'hi' ? 'GATEWAY CONNECT KARO' : 'CONNECT GATEWAY') + '</button>') +
+    '<button class="btn-grey" style="width:100%" onclick="markPaid()">\u2714\ufe0f ' + (LANG === 'hi' ? 'MARK PAID \u090f\u0935\u0902 RECORD \u0915\u0930\u094b' : 'MARK PAID & RECORD') + ' (\u20b9' + amt + ')</button>' +
+    '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'MARK PAID dabane par ye booking aapki COMMISSION LEDGER mein record ho jayegi.' : 'MARK PAID records this booking in your COMMISSION LEDGER.') + '</div>' +
+  '</div>';
+}
+async function markPaid() {
+  var t = kitTrain || {}, sel = kitPaxSel || [];
+  var amt = window.__kitTotal || 0, charge = window.__kitCharge || 5;
+  try {
+    await api('/api/agent/bookings', { method: 'POST', body: JSON.stringify({
+      date: new Date().toISOString().slice(0, 10),
+      train: (t.no || '') + ' ' + (t.name || ''),
+      pnr: '', pax: sel.length || 1, commission: charge
+    }) });
+    var box = document.getElementById('kitReqBox');
+    if (box) box.insertAdjacentHTML('afterbegin',
+      '<div class="warn-box" style="border-color:#2f7d4f"><b>\u2714\ufe0f ' + (LANG === 'hi' ? 'Payment \u20b9' + amt + ' mark ho gaya' : 'Payment \u20b9' + amt + ' marked') + '</b><br>' +
+      (LANG === 'hi' ? 'Booking aapki COMMISSION LEDGER mein record ho gayi.' : 'Booking recorded in your COMMISSION LEDGER.') + '</div>');
+    toast(LANG === 'hi' ? 'Record ho gaya' : 'Recorded');
+  } catch (e) { toast(e.message); }
 }
 async function kitAddPassenger() {
   var n = ((document.getElementById('kpfName') || {}).value || '').trim();
@@ -2043,6 +2093,7 @@ function submitRequest() {
     '<div class="warn-box" style="border-color:#2f7d4f"><b>' + (LANG === 'hi' ? 'बुकिंग रिक्वेस्ट तैयार है ✅' : 'Booking request ready ✅') + '</b><br>' +
     (LANG === 'hi' ? 'Neeche se copy karke booking complete karein.' : 'Copy it below to complete the booking.') + '</div>' +
     '<textarea style="width:100%;height:150px;background:#0b1018;color:#dfe6f0;border:1px solid #263149;border-radius:10px;padding:10px;font-size:12px" readonly>' + txt.replace(/</g, '&lt;') + '</textarea>' +
+    payPanelHTML() +
     '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-grey" onclick="copyReq()">&#128203; ' + (LANG === 'hi' ? 'कॉपी करें' : 'COPY REQUEST') + '</button>' +
     '<button class="btn-grey" onclick="printReq()">&#128424; ' + (LANG === 'hi' ? 'प्रिंट' : 'PRINT') + '</button></div>';
   toast(LANG === 'hi' ? 'Booking request ban gayi' : 'Booking request created');
@@ -2878,7 +2929,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-15';
+var APP_VERSION = '2026-10-10-16';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
