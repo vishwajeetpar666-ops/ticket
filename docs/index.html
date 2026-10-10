@@ -97,7 +97,9 @@
   @media(max-width:900px){.search-grid{grid-template-columns:1fr 1fr;}}
   .station-field{position:relative;}
   .station-field .cap{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;}
-      .sn{font-size:10.5px;font-weight:500;color:#aab8cf;margin-top:1px;line-height:1.25;}
+      .kit-add{margin:10px 0 6px;padding:10px;border:1px dashed #46536e;border-radius:10px;background:rgba(249,115,22,.04);}
+  .kit-add .cap{margin-bottom:6px;}
+  .sn{font-size:10.5px;font-weight:500;color:#aab8cf;margin-top:1px;line-height:1.25;}
   .rn{font-weight:800;}
   .rc{font-size:10px;color:#8a94a6;font-weight:700;}
   .route-tbl td:first-child{min-width:180px;}
@@ -1907,12 +1909,20 @@ async function kitRender() {
     var rows = pax.passengers.length ? pax.passengers.map(function (p, i) {
       return '<div class="pax-row"><input type="checkbox" checked data-name="' + p.name + '" data-age="' + p.age + '" data-gen="' + p.gender + '" data-berth="' + p.berth + '" data-food="' + p.food + '">' +
         '<b>' + (i + 1) + '. ' + p.name + '</b><span class="note">' + p.age + ' yrs | ' + p.gender + ' | ' + p.berth + '</span></div>';
-    }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'मास्टर लिस्ट खाली है - पहले PASSENGER MASTER LIST में यात्री जोड़ें।' : 'Your master list is empty - add passengers first in PASSENGER MASTER LIST.') + '</div>';
+    }).join('') : '<div class="empty-state">' + (LANG === 'hi' ? 'मास्टर लिस्ट खाली है - नीचे यात्री जोड़ें।' : 'Your master list is empty - add a passenger below.') + '</div>';
     body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
       '<div class="form-row" style="grid-template-columns:1fr 1fr 1fr">' +
       '<div><div class="cap">' + (LANG === 'hi' ? 'बोर्डिंग स्टेशन' : 'BOARDING STATION') + '</div><select id="kitBoard" onchange="kitBoardPick()">' + kitBoardOptions() + '</select></div>' +
       '<div><div class="cap">' + (LANG === 'hi' ? 'बोर्डिंग समय' : 'BOARDING TIME') + '</div><div class="note" id="kitBoardTime" style="padding:9px 0;font-weight:800">--:--</div></div></div>' +
-      '<div class="note" style="margin-bottom:8px">' + (LANG === 'hi' ? 'Aap alag station se bhi board kar sakte ho (jahan train rukti hai).' : 'You can board from a different station too (wherever the train stops).') + '</div>' +
+'<div class="kit-add">' +
+      '<div class="cap">' + (LANG === 'hi' ? 'नया यात्री जोड़ें' : 'ADD A PASSENGER') + '</div>' +
+      '<div class="form-row" style="grid-template-columns:1.4fr .7fr .7fr auto;gap:6px">' +
+      '<input id="kitNewName" placeholder="' + (LANG === 'hi' ? 'नाम (ID के अनुसार)' : 'Name (as per ID)') + '" aria-label="New passenger name">' +
+      '<input id="kitNewAge" type="number" min="1" max="120" placeholder="Age" aria-label="New passenger age">' +
+      '<select id="kitNewGen" aria-label="Gender"><option value="M">M</option><option value="F">F</option></select>' +
+      '<button class="btn-grey" onclick="kitAddPassenger()">+ ' + (LANG === 'hi' ? 'जोड़ें' : 'ADD') + '</button></div>' +
+      '<div class="note" style="margin:6px 0 8px">' + (LANG === 'hi' ? 'Ya PASSENGER MASTER LIST page par jaa kar poora detail bharo (berth, khana, ID).' : 'Or open the PASSENGER MASTER LIST page to fill full details (berth, food, ID).') + '</div>' +
+            '<div class="note" style="margin-bottom:8px">' + (LANG === 'hi' ? 'Aap alag station se bhi board kar sakte ho (jahan train rukti hai).' : 'You can board from a different station too (wherever the train stops).') + '</div>' +
       '<div style="margin:12px 0">' + rows + '</div>' +
       '<div class="form-row" style="grid-template-columns:1.4fr 80px 120px auto">' +
       '<div><div class="cap">' + (LANG === 'hi' ? 'नाम (आईडी अनुसार)' : 'NAME (as per ID)') + '</div><input id="kpfName" placeholder="e.g. VISHWAJEET KUMAR"></div>' +
@@ -2041,6 +2051,17 @@ function copyReq() {
   try { navigator.clipboard.writeText(window.__reqText || ''); toast(LANG === 'hi' ? 'Copy ho gaya' : 'Copied'); }
   catch (e) { toast('Copy failed - select manually'); }
 }
+async function kitAddPassenger() {
+  var n = ((document.getElementById('kitNewName') || {}).value || '').trim();
+  var a = +((document.getElementById('kitNewAge') || {}).value || 0);
+  var g = ((document.getElementById('kitNewGen') || {}).value || 'M');
+  if (!n || !a) { toast(LANG === 'hi' ? 'Naam aur umar bharo' : 'Enter name and age'); return; }
+  try {
+    await api('/api/passengers', { method: 'POST', body: JSON.stringify({ name: n, age: a, gender: g, berth: 'No Preference', food: 'No Food' }) });
+    toast(LANG === 'hi' ? 'Yatri jud gaya' : 'Passenger added');
+    kitRender();
+  } catch (e) { toast(e.message); }
+}
 function kitSelected() {
   var out = [];
   document.querySelectorAll('#kitBody .pax-row input:checked').forEach(function (b) {
@@ -2051,7 +2072,7 @@ function kitSelected() {
 function kitNext() {
   if (kitStep === 1) {
     var sel = kitSelected();
-    if (!sel.length) { toast(LANG === 'hi' ? 'कम से कम एक यात्री चुनें' : 'Select at least one passenger'); return; }
+    if (!sel.length) { toast(LANG === 'hi' ? 'Kam se kam ek yatri chuno - ya neeche "ADD" se naya yatri jodo' : 'Select at least one passenger - or add one below with ADD'); return; }
     kitPaxSel = sel;
   }
   if (kitStep === 3) {
@@ -2857,7 +2878,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-14';
+var APP_VERSION = '2026-10-10-15';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
