@@ -760,6 +760,12 @@
             <div><div class="cap">IRCTC Agent Username</div><input id="setIrtcUser" placeholder="IRCTC username"></div>
             <div><div class="cap">API Key / Token</div><input id="setApiKey" type="password" placeholder="paste your agent API key"></div>
           </div>
+          <div class="form-row" style="grid-template-columns:1fr">
+            <div><div class="cap">Seat Availability API URL (authorised only)</div>
+              <input id="setAvailUrl" placeholder="https://your-authorised-api/avail?train={train}&amp;from={from}&amp;to={to}&amp;cls={cls}&amp;date={date}">
+              <div class="note" style="margin-top:4px">Aapke paas kisi <b>authorised</b> source (PSP / IRCTC agent API) ka seat availability endpoint ho, to yahan daalo &mdash; seat panel turant LIVE ho jayega. <b>{train} {from} {to} {cls} {date}</b> khud bhar jaate hain, aur <b>{key}</b> mein aapki API key. Bina authorised API ke seat numbers nahin aate.</div>
+            </div>
+          </div>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
             <button class="btn-search" onclick="saveSettings()">SAVE</button>
             <span class="note" id="irtcStatus"></span>
@@ -1248,9 +1254,25 @@
       var qa = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qa[a[0]] = decodeURIComponent(a[1] || ''); });
       if (!qa.train) return jsonResp({ error: 'Train number chahiye.' }, 400);
       var st = load('vpr_settings', {}) || {};
-      if (!st.agentId || !st.agentKey) return jsonResp({ live: false, reason: 'no-agent-api' });
-      /* jab IRCTC agent API judega: yahan asli AVL/WL/RAC aayega */
-      return jsonResp({ live: false, reason: 'api-not-connected' });
+      if (!st.availUrl) return jsonResp({ live: false, reason: 'no-avail-api' });
+      var _u = st.availUrl
+        .replace('{train}', encodeURIComponent(qa.train))
+        .replace('{from}', encodeURIComponent(qa.from || ''))
+        .replace('{to}', encodeURIComponent(qa.to || ''))
+        .replace('{cls}', encodeURIComponent(qa.cls || ''))
+        .replace('{date}', encodeURIComponent(qa.date || ''));
+      if (st.apiKey) _u = _u.replace('{key}', encodeURIComponent(st.apiKey));
+      /* simple GET (no custom headers) so the browser does not need a CORS preflight */
+      return origFetch(_u).then(function (rr) { return rr.json(); }).then(function (dd) {
+        function pick(o, keys) { for (var i = 0; i < keys.length; i++) { if (o && o[keys[i]] != null && o[keys[i]] !== '') return o[keys[i]]; } return null; }
+        var av = pick(dd, ['avail', 'available', 'AVAILABLE', 'avl', 'Available', 'availability']);
+        var rc = pick(dd, ['rac', 'RAC', 'Rac']);
+        var wl = pick(dd, ['wl', 'waitlist', 'WAITLIST', 'WL', 'Waitlist']);
+        if (av == null && rc == null && wl == null) return jsonResp({ live: false, reason: 'bad-response' });
+        return jsonResp({ live: true, avail: av, rac: rc, wl: wl });
+      }).catch(function (e) {
+        return jsonResp({ live: false, reason: 'avail-api-error', detail: String(e && e.message || e) });
+      });
     }
 
     if (path === '/api/via') {
@@ -2459,6 +2481,7 @@ function loadSettings() {
     if (s.rspId) document.getElementById('setRspId').value = s.rspId;
     if (s.irtcUser) document.getElementById('setIrtcUser').value = s.irtcUser;
     if (s.apiKey) document.getElementById('setApiKey').value = s.apiKey;
+    if (s.availUrl && document.getElementById('setAvailUrl')) document.getElementById('setAvailUrl').value = s.availUrl;
     if (s.payProvider) document.getElementById('setPayProvider').value = s.payProvider;
     if (s.payPan) document.getElementById('setPayPan').value = s.payPan;
     if (s.payHolder) document.getElementById('setPayHolder').value = s.payHolder;
@@ -2480,6 +2503,7 @@ function saveSettings() {
       rspId: document.getElementById('setRspId').value.trim(),
       irtcUser: document.getElementById('setIrtcUser').value.trim(),
       apiKey: document.getElementById('setApiKey').value,
+      availUrl: ((document.getElementById('setAvailUrl') || {}).value || '').trim(),
       payProvider: document.getElementById('setPayProvider').value,
       payPan: ((document.getElementById('setPayPan') || {}).value || '').toUpperCase().trim(),
       payHolder: ((document.getElementById('setPayHolder') || {}).value || '').trim(),
@@ -2935,7 +2959,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-17';
+var APP_VERSION = '2026-10-10-18';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
