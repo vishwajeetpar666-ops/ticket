@@ -569,7 +569,7 @@
       </div>
 
       <div id="resultsWrap">
-        <div class="empty-state" data-html="1" data-en="Choose <b>From / To / Date</b> above and press Search.<br>Then press <b>BOOK ON IRCTC</b> - the Tatkal Quick Kit copies your passengers in one click." data-hi="ऊपर <b>कहाँ से / कहाँ तक / तारीख</b> चुनें और सर्च दबाएं।<br>फिर <b>BOOK ON IRCTC</b> दबाएं - तत्काल क्विक किट एक क्लिक में पैसेंजर कॉपी कर देता है।">Choose <b>From / To / Date</b> above and press Search.<br>Then press <b>BOOK ON IRCTC</b> - the Tatkal Quick Kit copies your passengers in one click.</div>
+        <div class="empty-state" data-html="1" data-en="Choose <b>From / To / Date</b> above and press Search.<br>Then press <b>BOOK / REQUEST</b> - the Tatkal Quick Kit copies your passengers in one click." data-hi="ऊपर <b>कहाँ से / कहाँ तक / तारीख</b> चुनें और सर्च दबाएं।<br>फिर <b>BOOK / REQUEST</b> दबाएं - तत्काल क्विक किट एक क्लिक में पैसेंजर कॉपी कर देता है।">Choose <b>From / To / Date</b> above and press Search.<br>Then press <b>BOOK / REQUEST</b> - the Tatkal Quick Kit copies your passengers in one click.</div>
       </div>
     </section>
 
@@ -1538,7 +1538,7 @@ function renderResults(trains) {
   else if (sortMode === 'dur') list.sort(function (a, b) { return durMins(a.dep, a.arr) - durMins(b.dep, b.arr); });
   displayedResults = list;
   var head = '<div class="results-head"><span class="cnt">' + list.length + (LANG === 'hi' ? ' परिणाम' : ' Results') + ': ' + s.from + ' &rarr; ' + s.to + ' | ' + fmtDate(new Date(s.date)) + '</span>' +
-    '<a class="btn-book" style="margin-left:auto" target="_blank" href="' + s.irctcUrl + '">' + (LANG === 'hi' ? 'LIVE SEARCH IRCTC पर →' : 'LIVE SEARCH ON IRCTC →') + '</a></div>';
+    '<button class="btn-book" style="margin-left:auto" onclick="openKit(0)">' + (LANG === 'hi' ? 'BOOK / REQUEST →' : 'BOOK / REQUEST →') + '</button></div>';
   var banner = s.reference
     ? '<div class="warn-box">' + (LANG === 'hi'
         ? '<b>संदर्भ समय-सारिणी</b> (सार्वजनिक भारतीय रेलवे डेटासेट, 2016) — ट्रेन नंबर और समय बदल सकते हैं। किराया <b>अनुमानित</b> है। बुकिंग से पहले IRCTC पर पक्का करें।'
@@ -1610,7 +1610,7 @@ function trainCard(t, idx, badge) {
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
     '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">' + (fare ? ('\u2248 \u20b9' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
-    '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK ON IRCTC →' : 'BOOK ON IRCTC →') + '</button></div></div>';
+    '<button class="btn-book" onclick="openKit(' + idx + ')">' + (LANG === 'hi' ? 'BOOK / REQUEST →' : 'BOOK / REQUEST →') + '</button></div></div>';
 }
 function pickCls(btn, c, idx) {
   var card = btn.closest('.train-card');
@@ -1749,7 +1749,7 @@ async function kitRender() {
     var live = !!(srvPay && srvPay.enabled);
     var payBtn = live
       ? '<button class="btn-book" onclick="startPay(' + (total4 * 100) + ')">PAY Rs.' + total4 + ' &amp; BOOK</button>'
-      : '<a class="btn-book" target="_blank" href="https://www.irctc.co.in/nget/booking/train-list">COMPLETE ON IRCTC \u2192</a>';
+      : '<button class="btn-book" onclick="submitRequest()">SUBMIT BOOKING REQUEST</button>';
     body.innerHTML = kitSteps() + '<div class="warn-box">' + kitTrainLine() + '</div>' +
       '<div class="pax-row"><b>Passengers</b><span class="note">' + sel4.length + ' selected</span></div>' +
       '<div class="pax-row"><b>IRCTC convenience fee (approx)</b><span class="note">Rs.' + conv4 + ' &times; ' + n4 + ' = <b>Rs.' + Math.round(conv4 * n4) + '</b></span></div>' +
@@ -1758,6 +1758,7 @@ async function kitRender() {
       '<div class="pax-row" style="border-top:1px solid var(--border)"><b>Estimated total</b><span class="note" style="font-size:15px;color:#ff9a4d"><b>Rs.' + total4 + '</b></span></div>' +
       '<div style="margin:12px 0"><b>Payment method</b>' +
       '<div class="pax-row"><input type="radio" name="paym" checked> UPI / QR &nbsp; <input type="radio" name="paym"> Debit / Credit Card &nbsp; <input type="radio" name="paym"> Net Banking</div></div>' +
+      '<div id="kitReqBox" style="margin-top:10px"></div>' +
       (live
         ? '<div class="warn-box" style="border-color:#2f7d4f"><b>Payment gateway LIVE hai.</b> Neeche PAY dabao - UPI / card / netbanking se payment hoga (Razorpay secure checkout).</div>'
         : (payReady
@@ -1781,6 +1782,31 @@ async function kitAddPassenger() {
     loadPassengers();
     kitRender();
   } catch (e) { toast(e.message); }
+}
+function submitRequest() {
+  var t = kitTrain || {}, s = currentSearch || {};
+  var sel = kitPaxSel.length ? kitPaxSel : [];
+  var lines = [];
+  lines.push('TRAIN : ' + (t.no || '') + ' ' + (t.name || ''));
+  lines.push('ROUTE : ' + (s.from || '') + ' -> ' + (s.to || '') + '   CLASS: ' + kitCls);
+  lines.push('BOARDING: ' + (kitBoard || '-') + '   IRCTC USERNAME: ' + (kitIrtcUser || '-'));
+  lines.push('PASSENGERS (' + sel.length + '):');
+  sel.forEach(function (p, i) {
+    lines.push('  ' + (i + 1) + '. ' + (p.name || '') + ' | ' + (p.age || '') + ' | ' + (p.gender || '') + ' | ' + (p.berth || '') + ' | ' + (p.food || ''));
+  });
+  var txt = lines.join('\n');
+  window.__reqText = txt;
+  var box = document.getElementById('kitReqBox');
+  if (box) box.innerHTML =
+    '<div class="warn-box" style="border-color:#2f7d4f"><b>' + (LANG === 'hi' ? 'बुकिंग रिक्वेस्ट तैयार है ✅' : 'Booking request ready ✅') + '</b><br>' +
+    (LANG === 'hi' ? 'Neeche se copy karke booking complete karein.' : 'Copy it below to complete the booking.') + '</div>' +
+    '<textarea style="width:100%;height:150px;background:#0b1018;color:#dfe6f0;border:1px solid #263149;border-radius:10px;padding:10px;font-size:12px" readonly>' + txt.replace(/</g, '&lt;') + '</textarea>' +
+    '<div style="margin-top:8px"><button class="btn-grey" onclick="copyReq()">&#128203; ' + (LANG === 'hi' ? 'कॉपी करें' : 'COPY REQUEST') + '</button></div>';
+  toast(LANG === 'hi' ? 'Booking request ban gayi' : 'Booking request created');
+}
+function copyReq() {
+  try { navigator.clipboard.writeText(window.__reqText || ''); toast(LANG === 'hi' ? 'Copy ho gaya' : 'Copied'); }
+  catch (e) { toast('Copy failed - select manually'); }
 }
 function kitSelected() {
   var out = [];
