@@ -96,7 +96,10 @@
     border-radius:0 0 6px 6px;max-height:240px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 18px rgba(0,0,0,.12);}
   .autocomplete div{padding:9px 12px;font-size:13px;border-bottom:1px solid #eef0f5;display:flex;justify-content:space-between;gap:8px;}
   .autocomplete div:hover{background:#eef2fb;cursor:pointer;}
-  .autocomplete .code{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .autocomplete .code{color:var(--muted);font-size:11.5px;white-space:nowrap;flex:0 0 auto;}
+  .autocomplete div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .autocomplete .ac-head{position:sticky;top:0;background:#f4f6fb;font-size:11px;font-weight:800;color:var(--navy);
+    text-transform:uppercase;letter-spacing:.3px;display:block;padding:6px 12px;}
   .swap-btn{background:#fff;border:1px solid #c9cfdc;border-radius:5px;padding:10px 12px;font-size:15px;color:var(--navy);}
   .search-grid select{width:100%;padding:10px;border:1px solid #c9cfdc;border-radius:5px;font-size:13px;background:#fff;}
   .btn-search{background:var(--orange);color:#fff;border:none;border-radius:5px;padding:11px 22px;font-size:13.5px;font-weight:700;}
@@ -1454,36 +1457,73 @@ function showView(v) {
 var STATIONS = [];
 fetch('./stations.json').then(function (r) { return r.json(); }).then(function (list) {
   STATIONS = list;
+  buildStateNames();
   var chip = document.getElementById('stnChip');
-  chip.textContent = (LANG === 'hi' ? 'स्टेशन डेटा: पूरे भारत के ' : 'STATION DATA: ') + STATIONS.length + (LANG === 'hi' ? ' स्टेशन' : ' stations across India');
+  var act = list.filter(function (s) { return s[4] === 1; }).length;
+  var stt = list.filter(function (s) { return s[2]; }).length;
+  chip.textContent = (LANG === 'hi' ? 'स्टेशन डेटा: ' : 'STATION DATA: ') + list.length + (LANG === 'hi' ? ' स्टेशन · ' : ' stations · ') + act + (LANG === 'hi' ? ' में ट्रेन डेटा · ' : ' with train data · ') + stt + (LANG === 'hi' ? ' का राज्य पता' : ' with state');
 });
+var STATE_NAMES = {};
+function buildStateNames() {
+  STATE_NAMES = {};
+  STATIONS.forEach(function (s) { if (s[2]) STATE_NAMES[s[2].toLowerCase()] = s[2]; });
+}
+function acScore(s, q) {
+  var n = s[0].toLowerCase(), c = s[1].toLowerCase();
+  if (c === q) return 0;
+  if (n === q) return 0;
+  if (n.indexOf(q) === 0) return 1;
+  var words = n.replace(/[^a-z0-9]+/g, ' ').split(' ');
+  for (var w = 0; w < words.length; w++) { if (words[w].indexOf(q) === 0) return 2; }
+  if (n.indexOf(q) >= 0) return 3;
+  if (c.indexOf(q) === 0) return 4;
+  if (s[7] && s[7].indexOf(q) >= 0) return 4;                          /* hindi name */
+  if (s[6] && s[6].toLowerCase().indexOf(q) === 0) return 5;           /* district */
+  if (s[2] && s[2].toLowerCase().indexOf(q) === 0) return 5;           /* state */
+  /* spelling tolerance: chhapra <-> chapra, ludiana <-> ludhiana */
+  var nq = q.replace(/(.)\1+/g, '$1');
+  if (nq.length >= 3 && n.replace(/(.)\1+/g, '$1').indexOf(nq) >= 0) return 6;
+  return 9;
+}
+function acSort(a, b) {
+  var aa = a[4] === 1 ? 0 : 1, ab = b[4] === 1 ? 0 : 1;      /* stations that HAVE train data first */
+  if (aa !== ab) return aa - ab;
+  var ta = a[5] || 0, tb = b[5] || 0;
+  if (ta !== tb) return tb - ta;                              /* more trains = more important */
+  var ma = a[3] === 1 ? 0 : 1, mb = b[3] === 1 ? 0 : 1;
+  if (ma !== mb) return ma - mb;
+  return a[0].length - b[0].length;
+}
+function acRow(s, inputId, acId) {
+  var nameTxt = (LANG === 'hi' && s[7]) ? s[7] : s[0];
+  var meta = [];
+  if (s[2]) meta.push(s[2]);
+  if (s[6] && s[6] !== s[2]) meta.push(s[6]);
+  if (s[5] > 0) meta.push(s[5] + (LANG === 'hi' ? ' ट्रेन' : ' trains'));
+  else meta.push(LANG === 'hi' ? 'ट्रेन डेटा नहीं' : 'no train data');
+  return '<div onclick="pickStation(\'' + inputId + '\',\'' + acId + '\',\'' + s[1] + '\')">' +
+    '<span>' + nameTxt + ' <b>(' + s[1] + ')</b></span>' +
+    '<span class="code">' + meta.join(' &middot; ') + '</span></div>';
+}
 function attachAutocomplete(inputId, acId) {
   var input = document.getElementById(inputId), ac = document.getElementById(acId);
   input.addEventListener('input', function () {
     var q = input.value.trim().toLowerCase();
     if (q.length < 2) { ac.style.display = 'none'; return; }
-    function sc(s) {
-      var n = s[0].toLowerCase();
-      if (n.indexOf(q) === 0) return 0;
-      var words = n.replace(/[^a-z0-9]+/g, ' ').split(' ');
-      for (var w = 0; w < words.length; w++) { if (words[w].indexOf(q) === 0) return 1; }
-      if (n.indexOf(q) >= 0) return 2;
-      if (s[1].toLowerCase().indexOf(q) === 0) return 3;
-      if (s[2] && s[2].toLowerCase().indexOf(q) >= 0) return 4;
-      return 9;
+    var hits, header = '';
+    if (STATE_NAMES[q]) {
+      /* state search: type "bihar" -> all Bihar stations */
+      hits = STATIONS.filter(function (s) { return s[2] && s[2].toLowerCase() === q; });
+      hits.sort(acSort);
+      header = '<div class="ac-head">' + STATE_NAMES[q] + (LANG === 'hi' ? ' के स्टेशन (' : ' stations (') + hits.length + ')</div>';
+      hits = hits.slice(0, 120);
+    } else {
+      hits = STATIONS.filter(function (s) { return acScore(s, q) < 9; });
+      hits.sort(function (a, b) { var d = acScore(a, q) - acScore(b, q); return d || acSort(a, b); });
+      hits = hits.slice(0, 40);
     }
-    var hits = STATIONS.filter(function (s) { return sc(s) < 9; });
-    hits.sort(function (a, b) {
-      var d = sc(a) - sc(b); if (d) return d;
-      var ma = (a[3] === 1) ? 0 : 1, mb = (b[3] === 1) ? 0 : 1;
-      if (ma !== mb) return ma - mb;
-      return a[0].length - b[0].length;
-    });
-    hits = hits.slice(0, 20);
     if (!hits.length) { ac.style.display = 'none'; return; }
-    ac.innerHTML = hits.map(function (s) {
-      return '<div onclick="pickStation(\'' + inputId + '\',\'' + acId + '\',\'' + s[1] + '\')"><span>' + s[0] + ' (' + s[1] + ')</span><span class="code">' + (s[2] ? s[2] : '') + '</span></div>';
-    }).join('');
+    ac.innerHTML = header + hits.map(function (s) { return acRow(s, inputId, acId); }).join('');
     ac.style.display = 'block';
   });
   input.addEventListener('blur', function () { setTimeout(function () { ac.style.display = 'none'; }, 180); });
@@ -1509,8 +1549,22 @@ function prefillDefaults() {
   d.min = today.toISOString().slice(0, 10); d.max = max.toISOString().slice(0, 10);
 }
 function codeOf(inpId) {
-  var v = document.getElementById(inpId).value, m = v.match(/\(([A-Z]{1,10})\)$/);
-  return m ? m[1] : null;
+  var v = document.getElementById(inpId).value.trim();
+  var m = v.match(/\(([A-Za-z0-9]{1,10})\)\s*$/);
+  if (m) return m[1].toUpperCase();
+  var q = v.toLowerCase();
+  if (!q) return null;
+  var exact = null, pref = [];
+  for (var i = 0; i < STATIONS.length; i++) {
+    var s = STATIONS[i];
+    if (s[4] !== 1) continue;                       /* only stations that have train data */
+    var n = s[0].toLowerCase();
+    if (n === q || s[1].toLowerCase() === q) { exact = s[1]; break; }
+    if (n.indexOf(q) === 0) pref.push(s);
+  }
+  if (exact) return exact;
+  if (pref.length) { pref.sort(function (a, b) { return (b[5] || 0) - (a[5] || 0); }); return pref[0][1]; }
+  return null;
 }
 var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function fmtDate(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
