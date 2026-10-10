@@ -351,6 +351,23 @@
   .steps button.active{background:rgba(249,115,22,.15);color:#ff9a4d;border-color:#f97316;}
 
   .avail-note{font-size:11.5px;color:#aab8cf;padding:7px 14px;border-top:1px solid var(--border);}
+  .avail-panel{padding:10px 14px 12px;border-top:1px solid var(--border);background:rgba(249,115,22,.04);}
+  .avail-head{font-size:11.5px;color:#aab8cf;margin-bottom:8px;}
+  .avail-head b{color:#ff9a4d;}
+  .avail-load{font-size:12px;color:#aab8cf;}
+  .avail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .avail-cell{background:#0b1018;border:1px solid #263149;border-radius:8px;padding:8px 6px;text-align:center;}
+  .avail-cell .k{display:block;font-size:9.5px;font-weight:800;letter-spacing:.4px;color:#8a94a6;}
+  .avail-cell .v{display:block;font-size:16px;font-weight:800;color:#5fd48f;margin-top:3px;}
+  .avail-cell .v.off{color:#5a6478;}
+  .avail-cell .v.fare{color:#ff9a4d;}
+  .avail-lock{margin-top:9px;font-size:11.5px;color:#ffb27a;background:rgba(249,115,22,.10);
+    border:1px solid rgba(249,115,22,.35);border-radius:8px;padding:8px 10px;line-height:1.45;}
+  .avail-ok{margin-top:9px;font-size:11.5px;color:#5fd48f;}
+  body.light .avail-panel{background:#fff8f2;}
+  body.light .avail-head{color:#41506b;} body.light .avail-cell{background:#fff;border-color:#e2e7f0;}
+  body.light .avail-cell .v{color:#14804a;} body.light .avail-cell .v.off{color:#9aa4b5;}
+  body.light .avail-lock{color:#b45309;background:#fff3ea;border-color:#f6c39a;}
   .avail-note b{color:#ff9a4d;}
 
   .toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;padding:8px 10px;background:#0f141f;border:1px solid var(--border);border-radius:10px;}
@@ -1184,6 +1201,16 @@
       return jsonResp({ ok: true, deleted: before !== list.length });
     }
 
+    if (path === '/api/avail') {
+      if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
+      var qa = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qa[a[0]] = decodeURIComponent(a[1] || ''); });
+      if (!qa.train) return jsonResp({ error: 'Train number chahiye.' }, 400);
+      var st = load('vpr_settings', {}) || {};
+      if (!st.agentId || !st.agentKey) return jsonResp({ live: false, reason: 'no-agent-api' });
+      /* jab IRCTC agent API judega: yahan asli AVL/WL/RAC aayega */
+      return jsonResp({ live: false, reason: 'api-not-connected' });
+    }
+
     if (path === '/api/via') {
       if (!session) return jsonResp({ error: 'Please log in first.' }, 401);
       var qv = {}; query.split('&').forEach(function (kv) { var a = kv.split('='); qv[a[0]] = decodeURIComponent(a[1] || ''); });
@@ -1693,16 +1720,39 @@ function pickCls(btn, c, idx) {
   var card = btn.closest('.train-card');
   card.querySelectorAll('.cls-tabs button').forEach(function (b) { b.classList.remove('active'); });
   btn.classList.add('active');
+  var fmap = {};
+  try { fmap = JSON.parse(decodeURIComponent(card.getAttribute('data-fares') || '%7B%7D')); } catch (e) {}
   var fareEl = document.getElementById('fare' + idx);
-  if (fareEl) {
-    var fmap = {};
-    try { fmap = JSON.parse(decodeURIComponent(card.getAttribute('data-fares') || '%7B%7D')); } catch (e) {}
-    fareEl.textContent = fmap[c] ? ('\u2248 \u20b9' + fmap[c] + ' /' + c) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC');
-  }
+  if (fareEl) fareEl.textContent = fmap[c] ? ('\u2248 \u20b9' + fmap[c] + ' /' + c) : (LANG === 'hi' ? 'IRCTC \u092a\u0930 \u0926\u0947\u0916\u0947\u0902' : 'Check on IRCTC');
   var av = card.querySelector('#avail' + idx);
-  if (av) av.innerHTML = (LANG === 'hi'
-    ? 'चुना गया: <b>' + c + '</b> &nbsp;|&nbsp; सीट उपलब्धता: लाइव सीट नंबर (AVL/WL) IRCTC agent API जुड़ने पर यहीं दिखेंगे।'
-    : 'Selected: <b>' + c + '</b> &nbsp;|&nbsp; Availability: live seat numbers (AVL/WL) will show here once your IRCTC agent API is connected.');
+  if (!av) return;
+  var s = currentSearch || {};
+  var t = (displayedResults && displayedResults[idx]) ? displayedResults[idx] : {};
+  av.innerHTML = '<div class="avail-panel"><div class="avail-load">' + (LANG === 'hi' ? 'Seat status load ho raha hai...' : 'Loading seat status...') + '</div></div>';
+  api('/api/avail?train=' + encodeURIComponent(t.no || '') + '&from=' + encodeURIComponent(s.from || '') +
+      '&to=' + encodeURIComponent(s.to || '') + '&cls=' + encodeURIComponent(c) + '&date=' + encodeURIComponent(s.date || ''))
+    .then(function (d) { renderAvail(av, c, t, s, fmap, d); })
+    .catch(function () { renderAvail(av, c, t, s, fmap, { live: false }); });
+}
+function renderAvail(av, c, t, s, fmap, d) {
+  var live = !!(d && d.live);
+  function cell(k, v) { return '<div class="avail-cell"><span class="k">' + k + '</span><span class="v' + (live ? '' : ' off') + '">' + (live ? v : '\u2014') + '</span></div>'; }
+  av.innerHTML =
+    '<div class="avail-panel">' +
+      '<div class="avail-head"><b>' + c + '</b> &middot; ' + (s.from || '') + ' &rarr; ' + (s.to || '') + ' &middot; ' + (s.date || '') +
+        ' &middot; ' + (t.no || '') + '</div>' +
+      '<div class="avail-grid">' +
+        cell(LANG === 'hi' ? '\u0909\u092a\u0932\u092c\u094d\u0927' : 'AVAILABLE', d.avail) +
+        cell('RAC', d.rac) +
+        cell(LANG === 'hi' ? '\u0935\u0947\u091f\u093f\u0902\u0917' : 'WAITLIST', d.wl) +
+        '<div class="avail-cell"><span class="k">' + (LANG === 'hi' ? '\u0915\u093f\u0930\u093e\u092f\u093e' : 'FARE') + '</span><span class="v fare">' + (fmap[c] ? ('\u20b9' + fmap[c]) : '\u2014') + '</span></div>' +
+      '</div>' +
+      (live
+        ? '<div class="avail-ok">' + (LANG === 'hi' ? 'Live seat data IRCTC agent API se.' : 'Live seat data from IRCTC agent API.') + '</div>'
+        : '<div class="avail-lock">&#128274; ' + (LANG === 'hi'
+            ? 'Live seat numbers (AVL / RAC / WL) IRCTC agent API se aate hain. Aapka RSP / API ID judte hi ye numbers yahin dikhne lagenge.'
+            : 'Live seat numbers (AVL / RAC / WL) come from the IRCTC agent API. They will appear here the moment your RSP / API ID is connected.') + '</div>') +
+    '</div>';
 }
 
 /* ================= Tatkal Quick Kit ================= */
@@ -2666,7 +2716,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-2';
+var APP_VERSION = '2026-10-10-3';
 function hardUpdate() {
   try { if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }); } } catch (e) {}
   location.replace(location.pathname + '?v=' + Date.now());
