@@ -1,1 +1,1 @@
-{"v": "2026-10-10-8", "date": "2026-10-10", "note": "mobile: no horizontal overflow in any view; wide tables scroll inside cards"}
+{"v": "2026-10-10-9", "date": "2026-10-10", "note": "auto-retry + loading message while train data downloads"}
