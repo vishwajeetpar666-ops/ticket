@@ -291,6 +291,12 @@ app.get('/', function (req, res) {
   } catch (e) {}
   res.send(INDEX_HTML);
 });
+app.get('/version.json', function (req, res) {
+  res.set('Cache-Control', 'no-store');
+  res.set('Content-Type', 'application/json; charset=utf-8');
+  try { return res.send(fs.readFileSync(path.join(__dirname, 'public', 'version.json'), 'utf-8')); } catch (e) {}
+  res.status(404).end();
+});
 app.get('/manifest.json', function (req, res) {
   res.set('Content-Type', 'application/manifest+json; charset=utf-8');
   try { return res.send(fs.readFileSync(path.join(__dirname, 'public', 'manifest.json'), 'utf-8')); } catch (e) {}
