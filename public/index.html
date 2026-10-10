@@ -98,6 +98,9 @@
   .station-field{position:relative;}
   .station-field .cap{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;}
       .sn{font-size:10.5px;font-weight:500;color:#aab8cf;margin-top:1px;line-height:1.25;}
+  .rn{font-weight:800;}
+  .rc{font-size:10px;color:#8a94a6;font-weight:700;}
+  .route-tbl td:first-child{min-width:180px;}
   .sn .st{color:#8a94a6;}
   body.light .sn{color:#5a6478;} body.light .sn .st{color:#8a94a6;}
   .station-field input{width:100%;padding:11px 13px;border:1.5px solid #46536e;border-radius:9px;font-size:14px;background:#000;color:#ffffff;font-weight:600;letter-spacing:.2px;}
@@ -1675,6 +1678,11 @@ function stnLine(code) {
   if (!s) return '';
   return '<div class="sn">' + s[0] + (s[2] ? ' <span class="st">&middot; ' + s[2] + '</span>' : '') + '</div>';
 }
+function stnLine2(code) {
+  var s = stnInfo(code);
+  if (!s) return '';
+  return s[2] ? '<div class="sn">' + s[2] + '</div>' : '';
+}
 function stationByCode(code) {
   for (var i = 0; i < STATIONS.length; i++) { if (STATIONS[i][1] === code) return STATIONS[i]; }
   return null;
@@ -1802,9 +1810,9 @@ function trainCard(t, idx, badge) {
       ((badge || '').indexOf('FASTEST') >= 0 ? ' <span class="badge fast">&#9889; ' + (LANG === 'hi' ? 'सबसे तेज़' : 'FASTEST') + '</span>' : '') +
       ((badge || '').indexOf('SHORTEST') >= 0 ? ' <span class="badge short">&#128205; ' + (LANG === 'hi' ? 'सबसे छोटा रास्ता' : 'SHORTEST') + '</span>' : '') +
       '</div><span class="note">' + t.note + '</span></div>' +
-    '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn"><b>' + t.from + '</b>' + stnLine(t.from) + '</div></div>' +
+    '<div class="tc-times"><div><div class="t">' + t.dep + '</div><div class="stn"><b>' + (stnName(t.from) || t.from) + '</b> <span class="rc">' + t.from + '</span>' + stnLine2(t.from) + '</div></div>' +
     '<div class="dur">' + t.dist + ' km' + ((t.durMin || durMins(t.dep, t.arr)) ? '<br>' + fmtDur(t.durMin || durMins(t.dep, t.arr)) : '') + '</div>' +
-    '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn"><b>' + t.to + '</b>' + stnLine(t.to) + '</div></div></div>' +
+    '<div style="text-align:right"><div class="t">' + t.arr + '</div><div class="stn"><b>' + (stnName(t.to) || t.to) + '</b> <span class="rc">' + t.to + '</span>' + stnLine2(t.to) + '</div></div></div>' +
     '<div class="cls-tabs">' + tabs + '</div>' +
     '<div class="avail-note" id="avail' + idx + '"></div>' +
     '<div class="tc-foot"><div class="fare"><small>' + (LANG === 'hi' ? 'किराया (अनुमानित)' : 'FARE (INDICATIVE)') + '</small><span id="fare' + idx + '">' + (fare ? ('\u2248 \u20b9' + fare + ' /' + cls) : (LANG === 'hi' ? 'IRCTC पर देखें' : 'Check on IRCTC')) + '</span></div>' +
@@ -1872,8 +1880,8 @@ function kitBoardOptions() {
   for (var j = 0; j < kitStops.length; j++) { if (kitStops[j].code === s.to) { bi = j; break; } }
   var list = (ai >= 0 && bi > ai) ? kitStops.slice(ai, bi + 1) : kitStops;
   return list.map(function (x) {
-    var _n = stnName(x.code);
-    return '<option value="' + x.code + '" data-t="' + x.time + '">' + x.code + (_n ? ' \u2014 ' + _n : '') + ' (' + x.time + ')</option>';
+    var _n = stnName(x.code), _stt = stnState(x.code);
+    return '<option value="' + x.code + '" data-t="' + x.time + '">' + (_n || x.code) + ' (' + x.code + ')' + (_stt ? ' \u2022 ' + _stt : '') + ' \u2014 ' + x.time + '</option>';
   }).join('');
 }
 function kitBoardPick() {
@@ -2644,15 +2652,21 @@ async function showRoute(idx, btn) {
       var style = '';
       if (k === fi || k === ti) style = ' style="font-weight:800;background:rgba(249,115,22,.14)"';
       else if (fi > 0 && k < fi) style = ' style="opacity:.45"';
-      rows += '<tr' + style + '><td><b>' + x.code + '</b>' + stnLine(x.code) + '</td><td>' + x.time + '</td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
+      var _s = stnInfo(x.code);
+      var _nm = _s ? _s[0] : x.code;
+      var _stt = _s ? (_s[2] || '') : '';
+      var _dst = _s ? (_s[6] || '') : '';
+      rows += '<tr' + style + '><td><b class="rn">' + _nm + '</b> <span class="rc">' + x.code + '</span>' +
+        (_stt ? '<div class="sn">' + _stt + (_dst && _dst !== _stt ? ' &middot; ' + _dst : '') + '</div>' : '') +
+        '</td><td><b>' + x.time + '</b></td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
     });
     var origin = stops.length ? stops[0].code : '', dest = stops.length ? stops[stops.length - 1].code : '';
     box.innerHTML =
       '<div class="note" style="margin:8px 0 6px"><b>' + t.name + ' (' + t.no + ')</b> &mdash; ' + origin + ' &rarr; ' + dest +
       ' (' + (LANG === 'hi' ? '\u092a\u0942\u0930\u0940 \u0930\u0942\u091f, ' : 'full route, ') + stops.length + (LANG === 'hi' ? ' \u0938\u094d\u091f\u0947\u0936\u0928)' : ' stops)') +
       (fi > 0 ? ' &middot; <b>' + (LANG === 'hi' ? '\u092c\u094b\u0930\u094d\u0921\u093f\u0902\u0917: ' : 'Boarding: ') + s.from + '</b>' : '') + '</div>' +
-      '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928' : 'Station') + '</th><th>' + (LANG === 'hi' ? '\u0938\u092e\u092f' : 'Time') + '</th><th>Day</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'Samay reference data se - IRCTC par confirm karein.' : 'Times from reference data - confirm on IRCTC.') + '</div>';
+      '<div style="overflow-x:auto"><table class="plist route-tbl"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928 \u2022 \u0930\u093e\u091c\u094d\u092f' : 'STATION \u2022 STATE') + '</th><th>' + (LANG === 'hi' ? '\u0938\u092e\u092f' : 'Time') + '</th><th>Day</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'Har station ka samay reference timetable se (is data mein arrival aur departure ek hi samay hota hai) - IRCTC par confirm karein.' : 'Each stop\u2019s time is from the reference timetable (this data gives one time per stop, arrival and departure are the same) - confirm on IRCTC.') + '</div>';
     box.dataset.open = '1';
     btn.textContent = (LANG === 'hi' ? '\u0930\u0942\u091f' : 'ROUTE') + ' \u25b4';
   } catch (e) {
@@ -2842,7 +2856,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-11';
+var APP_VERSION = '2026-10-10-12';
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
