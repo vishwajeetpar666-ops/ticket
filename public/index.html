@@ -2656,17 +2656,18 @@ async function showRoute(idx, btn) {
       var _nm = _s ? _s[0] : x.code;
       var _stt = _s ? (_s[2] || '') : '';
       var _dst = _s ? (_s[6] || '') : '';
+      var _t = (x.time && /\d{1,2}:\d{2}/.test(x.time)) ? x.time : '\u2014';
       rows += '<tr' + style + '><td><b class="rn">' + _nm + '</b> <span class="rc">' + x.code + '</span>' +
         (_stt ? '<div class="sn">' + _stt + (_dst && _dst !== _stt ? ' &middot; ' + _dst : '') + '</div>' : '') +
-        '</td><td><b>' + x.time + '</b></td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
+        '</td><td>' + _t + '</td><td>' + _t + '</td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
     });
     var origin = stops.length ? stops[0].code : '', dest = stops.length ? stops[stops.length - 1].code : '';
     box.innerHTML =
       '<div class="note" style="margin:8px 0 6px"><b>' + t.name + ' (' + t.no + ')</b> &mdash; ' + origin + ' &rarr; ' + dest +
       ' (' + (LANG === 'hi' ? '\u092a\u0942\u0930\u0940 \u0930\u0942\u091f, ' : 'full route, ') + stops.length + (LANG === 'hi' ? ' \u0938\u094d\u091f\u0947\u0936\u0928)' : ' stops)') +
       (fi > 0 ? ' &middot; <b>' + (LANG === 'hi' ? '\u092c\u094b\u0930\u094d\u0921\u093f\u0902\u0917: ' : 'Boarding: ') + s.from + '</b>' : '') + '</div>' +
-      '<div style="overflow-x:auto"><table class="plist route-tbl"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928 \u2022 \u0930\u093e\u091c\u094d\u092f' : 'STATION \u2022 STATE') + '</th><th>' + (LANG === 'hi' ? '\u0938\u092e\u092f' : 'Time') + '</th><th>Day</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'Har station ka samay reference timetable se (is data mein arrival aur departure ek hi samay hota hai) - IRCTC par confirm karein.' : 'Each stop\u2019s time is from the reference timetable (this data gives one time per stop, arrival and departure are the same) - confirm on IRCTC.') + '</div>';
+      '<div style="overflow-x:auto"><table class="plist route-tbl"><thead><tr><th>' + (LANG === 'hi' ? '\u0938\u094d\u091f\u0947\u0936\u0928 \u2022 \u0930\u093e\u091c\u094d\u092f' : 'STATION \u2022 STATE') + '</th><th>' + (LANG === 'hi' ? '\u092a\u0939\u0941\u0902\u091a\u0947\u0917\u093e' : 'ARR') + '</th><th>' + (LANG === 'hi' ? '\u0928\u093f\u0915\u0932\u0947\u0917\u093e' : 'DEP') + '</th><th>Day</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'Reference timetable mein har station ka ek hi samay hota hai - isliye <b>ARR aur DEP same</b> dikh rahe hain. Alag arrival/departure aur live samay IRCTC agent API judne par aayega. IRCTC par confirm karein.' : 'The reference timetable gives one time per stop - so <b>ARR and DEP show the same value</b>. Separate arrival/departure and live times come once the IRCTC agent API is connected. Confirm on IRCTC.') + '</div>';
     box.dataset.open = '1';
     btn.textContent = (LANG === 'hi' ? '\u0930\u0942\u091f' : 'ROUTE') + ' \u25b4';
   } catch (e) {
@@ -2856,7 +2857,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-12';
+var APP_VERSION = '2026-10-10-13';
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
