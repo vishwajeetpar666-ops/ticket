@@ -588,8 +588,33 @@ app.get('/api/avail', requireAuth, (req, res) => {
   // an honest message instead of fake numbers.
   const train = String(req.query.train || '').trim();
   if (!train) return res.status(400).json({ error: 'Train number required.' });
-  const hasAgent = !!(process.env.IRCTC_AGENT_ID && process.env.IRCTC_AGENT_KEY);
-  return res.json({ live: false, reason: hasAgent ? 'api-not-connected' : 'no-agent-api' });
+  const tmpl = process.env.AVAIL_API_URL || '';
+  if (!tmpl) {
+    const hasAgent = !!(process.env.IRCTC_AGENT_ID && process.env.IRCTC_AGENT_KEY);
+    return res.json({ live: false, reason: hasAgent ? 'api-not-connected' : 'no-avail-api' });
+  }
+  (async () => {
+    try {
+      const u = tmpl
+        .replace('{train}', encodeURIComponent(train))
+        .replace('{from}', encodeURIComponent(String(req.query.from || '')))
+        .replace('{to}', encodeURIComponent(String(req.query.to || '')))
+        .replace('{cls}', encodeURIComponent(String(req.query.cls || '')))
+        .replace('{date}', encodeURIComponent(String(req.query.date || '')));
+      const hdrs = {};
+      if (process.env.AVAIL_API_KEY) { hdrs['Authorization'] = 'Bearer ' + process.env.AVAIL_API_KEY; hdrs['X-API-Key'] = process.env.AVAIL_API_KEY; }
+      const rr = await fetch(u, { headers: hdrs });
+      const dd = await rr.json();
+      const pick = (o, keys) => { for (const k of keys) { if (o && o[k] != null && o[k] !== '') return o[k]; } return null; };
+      const av = pick(dd, ['avail', 'available', 'AVAILABLE', 'avl', 'Available', 'availability']);
+      const rc = pick(dd, ['rac', 'RAC']);
+      const wl = pick(dd, ['wl', 'waitlist', 'WAITLIST', 'WL']);
+      if (av == null && rc == null && wl == null) return res.json({ live: false, reason: 'bad-response' });
+      return res.json({ live: true, avail: av, rac: rc, wl: wl });
+    } catch (e) {
+      return res.json({ live: false, reason: 'avail-api-error', detail: String(e && e.message || e) });
+    }
+  })();
 });
 app.get('/api/trains', requireAuth, (req, res) => {
   const from = String(req.query.from || '').toUpperCase();
