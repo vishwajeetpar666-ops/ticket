@@ -2235,7 +2235,8 @@ function submitRequest() {
     '<textarea style="width:100%;height:150px;background:#0b1018;color:#dfe6f0;border:1px solid #263149;border-radius:10px;padding:10px;font-size:12px" readonly>' + txt.replace(/</g, '&lt;') + '</textarea>' +
     payPanelHTML() +
     '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-grey" onclick="copyReq()">&#128203; ' + (LANG === 'hi' ? 'कॉपी करें' : 'COPY REQUEST') + '</button>' +
-    '<button class="btn-grey" onclick="printReq()">&#128424; ' + (LANG === 'hi' ? 'प्रिंट' : 'PRINT') + '</button></div>';
+    '<button class="btn-grey" onclick="printReq()">&#128424; ' + (LANG === 'hi' ? 'प्रिंट' : 'PRINT') + '</button>' +
+    '<button class="btn-grey" onclick="printSlip()">&#129534; ' + (LANG === 'hi' ? 'बुकिंग स्लिप' : 'BOOKING SLIP') + '</button></div>';
   toast(LANG === 'hi' ? 'Booking request ban gayi' : 'Booking request created');
 }
 function copyReq() {
@@ -2828,6 +2829,37 @@ function printReq() {
   w.document.close();
   w.focus(); w.print();
 }
+function printSlip() {
+  var t = kitTrain || {}, s = currentSearch || {}, sel = kitPaxSel || [];
+  var amt = window.__kitTotal || 0;
+  var st = {}; try { st = JSON.parse(localStorage.getItem('vpr_settings') || '{}'); } catch (e) {}
+  var reqId = 'REQ-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  var rows = sel.map(function (p, i) {
+    return '<tr><td>' + (i + 1) + '</td><td>' + (p.name || '') + '</td><td>' + (p.age || '') + '</td><td>' + (p.gender || '') + '</td><td>' + (p.berth || '') + '</td><td>' + (p.food || '') + '</td></tr>';
+  }).join('');
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Booking Slip ' + reqId + '</title>' +
+    '<style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;color:#111}h1{font-size:17px;margin:0 0 2px}' +
+    '.muted{color:#666;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}' +
+    'th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f2f2f2}' +
+    '.tot{font-size:15px;font-weight:800;margin-top:10px}.box{border:1px solid #ccc;border-radius:8px;padding:10px;margin-top:10px;font-size:12.5px}' +
+    '@media print{body{padding:0}}</style></head><body>' +
+    '<h1>Vishwajeet Parmar Rajput Train Ticket</h1>' +
+    '<div class="muted">Owner: Vishwajeet Parmar Rajput &bull; +91 9530646737 &bull; vishwajeetpar666@gmail.com</div>' +
+    '<div class="box"><b>BOOKING REQUEST SLIP</b><br>Request ID: <b>' + reqId + '</b><br>Date: ' + new Date().toLocaleString() + '<br>' +
+    (st.rspId ? 'Agent: ' + st.rspId + '<br>' : '') + 'IRCTC username: ' + (kitIrtcUser || '-') + '</div>' +
+    '<div class="box"><b>' + (t.name || '') + ' (' + (t.no || '') + ')</b><br>' +
+    (stnName(s.from) || s.from || '') + ' (' + (s.from || '') + ') &rarr; ' + (stnName(s.to) || s.to || '') + ' (' + (s.to || '') + ')<br>' +
+    'Journey date: ' + (s.date || '') + ' &bull; Class: ' + kitCls + ' &bull; Quota: ' + (s.quota || 'GENERAL') + '<br>' +
+    'Boarding station: ' + (kitBoard || '-') + '</div>' +
+    '<table><thead><tr><th>#</th><th>Name</th><th>Age</th><th>G</th><th>Berth</th><th>Food</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="tot">Amount payable: Rs.' + amt + '</div>' +
+    '<div class="box muted">Note: Ye ek BOOKING REQUEST hai. Asli ticket IRCTC ke system se banta hai. ' +
+    'Train number, samay aur kiraya badal sakte hain - IRCTC par confirm karein. ' +
+    'Tatkal: AC 10:00 AM, SL/2S 11:00 AM (yatra se ek din pehle).</div></body></html>';
+  var w = window.open('', '_blank');
+  if (!w) { toast('Popup block hai - allow karein'); return; }
+  w.document.write(html); w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
+}
 function timeToMin(s) {
   var b = String(s || '').split(':');
   if (b.length < 2) return null;
@@ -3071,7 +3103,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-22';
+var APP_VERSION = '2026-10-10-23';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
