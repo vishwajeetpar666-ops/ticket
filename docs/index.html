@@ -2159,9 +2159,30 @@ function payPanelHTML() {
       : '<div class="warn-box" style="margin:10px 0"><b>' + (LANG === 'hi' ? 'Online payment gateway connect nahin hai.' : 'Online payment gateway is not connected.') + '</b><br>' +
         (LANG === 'hi' ? 'Razorpay keys daalo (Integrations) - phir yahin PAY button se UPI/card payment hoga. Tab tak customer se nakad/UPI lekar neeche \u201cMARK PAID\u201d dabao.' : 'Add your Razorpay keys (Integrations) - then this PAY button takes UPI/card. Until then, collect cash/UPI and press MARK PAID below.') + '</div>' +
         '<button class="btn-grey" style="width:100%;margin-bottom:8px" onclick="switchTab(\'integr\')">\u2699\ufe0f ' + (LANG === 'hi' ? 'GATEWAY CONNECT KARO' : 'CONNECT GATEWAY') + '</button>') +
+    '<div class="form-row" style="grid-template-columns:1fr auto;gap:8px;margin:8px 0">' +
+      '<input id="kitCustWa" placeholder="' + (LANG === 'hi' ? '\u0917\u094d\u0930\u093e\u0939\u0915 \u0915\u093e WhatsApp \u0928\u0902\u092c\u0930 (e.g. 98765 43210)' : 'Customer WhatsApp number (e.g. 98765 43210)') + '" aria-label="Customer WhatsApp number">' +
+      '<button class="btn-grey" onclick="sendReqWhatsApp()">&#128242; ' + (LANG === 'hi' ? 'WhatsApp par bhejo' : 'SEND ON WHATSAPP') + '</button>' +
+    '</div>' +
     '<button class="btn-grey" style="width:100%" onclick="markPaid()">\u2714\ufe0f ' + (LANG === 'hi' ? 'MARK PAID \u090f\u0935\u0902 RECORD \u0915\u0930\u094b' : 'MARK PAID & RECORD') + ' (\u20b9' + amt + ')</button>' +
     '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'MARK PAID dabane par ye booking aapki COMMISSION LEDGER mein record ho jayegi.' : 'MARK PAID records this booking in your COMMISSION LEDGER.') + '</div>' +
   '</div>';
+}
+function sendReqWhatsApp() {
+  var t = kitTrain || {}, s = currentSearch || {}, sel = kitPaxSel || [];
+  var amt = window.__kitTotal || 0;
+  var num = String((document.getElementById('kitCustWa') || {}).value || '').replace(/\D/g, '');
+  if (num.length === 10) num = '91' + num;
+  if (num.length === 12 && num.indexOf('91') === 0) { /* ok */ } else if (num.length === 11 && num[0] === '0') { num = '91' + num.slice(1); }
+  var txt = '\ud83c\udfab BOOKING REQUEST\n' +
+    (t.name || '') + ' (' + (t.no || '') + ')\n' +
+    (stnName(s.from) || s.from || '') + ' (' + (s.from || '') + ') \u2192 ' + (stnName(s.to) || s.to || '') + ' (' + (s.to || '') + ')\n' +
+    (s.date || '') + '  |  ' + kitCls + '\n' +
+    'Boarding: ' + (kitBoard || '-') + '\n' +
+    'Passengers: ' + sel.length + '\n' +
+    'Amount payable: \u20b9' + amt + '\n\n' +
+    (window.__reqText || '') + '\n\n' +
+    'Vishwajeet Parmar Rajput Train Ticket';
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(txt), '_blank');
 }
 async function markPaid() {
   var t = kitTrain || {}, sel = kitPaxSel || [];
@@ -3050,7 +3071,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-21';
+var APP_VERSION = '2026-10-10-22';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
