@@ -1,1 +1,1 @@
-{"v": "2026-10-10-26", "date": "2026-10-10", "note": "NEW: shareable customer request link (customer sees their request + status)"}
+{"v": "2026-10-10-27", "date": "2026-10-12", "note": "Fix: missing per-stop times are now interpolated (marked with ~) in via routes and the route view"}
