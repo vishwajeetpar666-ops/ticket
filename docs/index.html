@@ -2216,7 +2216,8 @@ function loadRequests() {
       '<td>' + (r.from || '') + ' &rarr; ' + (r.to || '') + '</td><td>' + (r.date || '') + '</td><td>' + (r.pax || []).length + '</td>' +
       '<td>&#8377;' + (r.amount || 0) + '</td>' +
       '<td>' + (r.paid ? '<span style="color:#5fd48f;font-weight:800">PAID</span>' : '<span style="color:#ffb27a;font-weight:800">PENDING</span>') + '</td>' +
-      '<td style="white-space:nowrap"><button class="btn-grey" onclick="reqSlip(\'' + r.id + '\')">&#129534;</button> ' +
+      '<td style="white-space:nowrap"><button class="btn-grey" onclick="reqLink(\'' + r.id + '\')" title="Copy customer link">&#128279;</button> ' +
+      '<button class="btn-grey" onclick="reqSlip(\'' + r.id + '\')">&#129534;</button> ' +
       '<button class="btn-grey" onclick="reqPaid(\'' + r.id + '\')">&#10004;</button> ' +
       '<button class="btn-grey" onclick="reqDel(\'' + r.id + '\')">&#128465;</button></td></tr>';
   }).join('');
@@ -2225,6 +2226,37 @@ function reqGet(id) {
   var list = []; try { list = JSON.parse(localStorage.getItem('vpr_requests') || '[]'); } catch (e) {}
   for (var i = 0; i < list.length; i++) { if (list[i].id === id) return { rec: list[i], list: list, idx: i }; }
   return null;
+}
+function reqLink(id) {
+  var g = reqGet(id); if (!g) return;
+  var r = g.rec;
+  var c = { i: r.id, n: r.no, t: r.train, f: r.from, o: r.to, d: r.date, c: r.cls, b: r.boarding,
+            p: (r.pax || []).map(function (x) { return [x.name, x.age, x.gender]; }), a: r.amount, pd: r.paid };
+  var url = location.origin + location.pathname + '?req=' + encodeURIComponent(JSON.stringify(c));
+  try { navigator.clipboard.writeText(url); toast('Request link copy ho gaya - customer ko bhejo'); }
+  catch (e) { prompt('Request link:', url); }
+  return url;
+}
+function showCustomerRequest() {
+  var q; try { q = new URLSearchParams(location.search).get('req'); } catch (e) { return; }
+  if (!q) return;
+  var r; try { r = JSON.parse(decodeURIComponent(q)); } catch (e) { return; }
+  var rows = (r.p || []).map(function (x, i) { return '<tr><td>' + (i + 1) + '</td><td>' + (x[0] || '') + '</td><td>' + (x[1] || '') + '</td><td>' + (x[2] || '') + '</td></tr>'; }).join('');
+  var el = document.createElement('div');
+  el.className = 'card';
+  el.style.cssText = 'position:fixed;inset:0;z-index:9997;overflow:auto;background:var(--bg);padding:16px;margin:0';
+  el.innerHTML = '<div class="card-h">' + (LANG === 'hi' ? '\u0906\u092a\u0915\u0940 \u092c\u0941\u0915\u093f\u0902\u0917 \u0930\u093f\u0915\u094d\u0935\u0947\u0938\u094d\u091f' : 'YOUR BOOKING REQUEST') + '</div>' +
+    '<div class="card-b"><div class="pax-row"><b>Request ID</b><span class="note">' + (r.i || '') + '</span></div>' +
+    '<div class="pax-row"><b>' + (r.t || '') + ' (' + (r.n || '') + ')</b><span class="note">' + (r.f || '') + ' &rarr; ' + (r.o || '') + '</span></div>' +
+    '<div class="pax-row"><b>Date / Class</b><span class="note">' + (r.d || '') + ' &bull; ' + (r.c || '') + '</span></div>' +
+    '<div class="pax-row"><b>Boarding</b><span class="note">' + (r.b || '-') + '</span></div>' +
+    '<div class="pax-row"><b>Status</b><span class="note" style="font-weight:800;color:' + (r.pd ? '#5fd48f' : '#ffb27a') + '">' + (r.pd ? 'PAID' : 'PENDING') + '</span></div>' +
+    '<div style="overflow-x:auto"><table class="plist"><thead><tr><th>#</th><th>Name</th><th>Age</th><th>G</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="pay-total" style="margin-top:10px">' + (LANG === 'hi' ? '\u0926\u0947\u0928\u0947 \u0935\u093e\u0932\u0940 \u0930\u0915\u092e' : 'Amount payable') + ': <b>\u20b9' + (r.a || 0) + '</b></div>' +
+    '<div class="note" style="margin-top:8px">Vishwajeet Parmar Rajput Train Ticket &bull; +91 9530646737<br>' +
+    (LANG === 'hi' ? 'Ye ek booking request hai - asli ticket IRCTC se banta hai.' : 'This is a booking request - the actual ticket is issued by IRCTC.') + '</div>' +
+    '<button class="btn-search" style="margin-top:12px" onclick="location.href=location.pathname">OK</button></div>';
+  document.body.appendChild(el);
 }
 function reqSlip(id) {
   var g = reqGet(id); if (!g) return;
@@ -3199,7 +3231,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-25';
+var APP_VERSION = '2026-10-10-26';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
@@ -3226,6 +3258,8 @@ var APP_VERSION = '2026-10-10-25';
 })();
 function syncHtmlLang() { try { document.documentElement.lang = (typeof LANG === 'undefined') ? 'en' : (LANG === 'hi' ? 'hi' : (LANG === 'pa' ? 'pa' : 'en')); } catch (e) {} }
 setTimeout(syncHtmlLang, 500);
+window.addEventListener('DOMContentLoaded', function () { setTimeout(function () { try { showCustomerRequest(); } catch (e) {} }, 600); });
+if (document.readyState !== 'loading') { setTimeout(function () { try { showCustomerRequest(); } catch (e) {} }, 600); }
 window.addEventListener('error', function () {
   try {
     if (document.querySelector('.err-guard')) return;
