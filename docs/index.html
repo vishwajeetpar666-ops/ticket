@@ -724,6 +724,15 @@
       </div>
 
       <div class="card">
+        <div class="card-h" data-en="MY BOOKING REQUESTS" data-hi="मेरी बुकिंग रिक्वेस्ट">MY BOOKING REQUESTS</div>
+        <div class="card-b">
+          <div class="note" style="margin-bottom:8px">Jo bhi booking request aapne banayi - sab yahan. Reprint slip, WhatsApp, ya MARK PAID kar sakte ho.</div>
+          <div style="overflow-x:auto"><table class="plist" id="reqTable"><thead><tr><th>#</th><th>Request ID</th><th>Train</th><th>Route</th><th>Date</th><th>Pax</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+          <div id="reqMsg" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-h" data-en="BOOKING RECORD / COMMISSION LEDGER" data-hi="बुकिंग रिकॉर्ड / कमीशन लेजर">BOOKING RECORD / COMMISSION LEDGER</div>
         <div class="card-b">
           <div class="note">Har booking yahan record karo - PNR, yatri, aur apna commission. Total apne aap jud jaayega. (Ye aapka hisaab-kitaab hai.)</div>
@@ -1611,6 +1620,7 @@ function showView(v) {
   });
   if (v === 'settings') gateSettings();
   if (v === 'help') { try { renderSysStatus(); } catch (e) {} }
+  if (v === 'agent') { try { loadRequests(); } catch (e) {} }
   window.scrollTo(0, 0);
 }
 
@@ -2177,6 +2187,81 @@ function payPanelHTML() {
     '<div class="note" style="margin-top:6px">' + (LANG === 'hi' ? 'MARK PAID dabane par ye booking aapki COMMISSION LEDGER mein record ho jayegi.' : 'MARK PAID records this booking in your COMMISSION LEDGER.') + '</div>' +
   '</div>';
 }
+function saveRequest() {
+  try {
+    var t = kitTrain || {}, s = currentSearch || {}, sel = kitPaxSel || [];
+    var rec = {
+      id: 'REQ-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+      ts: Date.now(), no: t.no || '', train: t.name || '',
+      from: s.from || '', to: s.to || '', date: s.date || '', cls: kitCls || '',
+      quota: s.quota || 'GENERAL', boarding: kitBoard || '', irtc: kitIrtcUser || '',
+      pax: sel.map(function (p) { return { name: p.name, age: p.age, gender: p.gender, berth: p.berth, food: p.food }; }),
+      amount: window.__kitTotal || 0, paid: false
+    };
+    var list = JSON.parse(localStorage.getItem('vpr_requests') || '[]');
+    list.unshift(rec);
+    localStorage.setItem('vpr_requests', JSON.stringify(list.slice(0, 200)));
+    window.__lastReqId = rec.id;
+    return rec;
+  } catch (e) { return null; }
+}
+function loadRequests() {
+  var tb = document.querySelector('#reqTable tbody');
+  if (!tb) return;
+  var list = [];
+  try { list = JSON.parse(localStorage.getItem('vpr_requests') || '[]'); } catch (e) {}
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="9" class="note">Abhi koi request nahin banayi.</td></tr>'; return; }
+  tb.innerHTML = list.map(function (r, i) {
+    return '<tr><td>' + (i + 1) + '</td><td><b>' + r.id + '</b></td><td>' + (r.no || '') + ' ' + (r.train || '') + '</td>' +
+      '<td>' + (r.from || '') + ' &rarr; ' + (r.to || '') + '</td><td>' + (r.date || '') + '</td><td>' + (r.pax || []).length + '</td>' +
+      '<td>&#8377;' + (r.amount || 0) + '</td>' +
+      '<td>' + (r.paid ? '<span style="color:#5fd48f;font-weight:800">PAID</span>' : '<span style="color:#ffb27a;font-weight:800">PENDING</span>') + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn-grey" onclick="reqSlip(\'' + r.id + '\')">&#129534;</button> ' +
+      '<button class="btn-grey" onclick="reqPaid(\'' + r.id + '\')">&#10004;</button> ' +
+      '<button class="btn-grey" onclick="reqDel(\'' + r.id + '\')">&#128465;</button></td></tr>';
+  }).join('');
+}
+function reqGet(id) {
+  var list = []; try { list = JSON.parse(localStorage.getItem('vpr_requests') || '[]'); } catch (e) {}
+  for (var i = 0; i < list.length; i++) { if (list[i].id === id) return { rec: list[i], list: list, idx: i }; }
+  return null;
+}
+function reqSlip(id) {
+  var g = reqGet(id); if (!g) return;
+  var r = g.rec;
+  var rows = (r.pax || []).map(function (p, i) {
+    return '<tr><td>' + (i + 1) + '</td><td>' + (p.name || '') + '</td><td>' + (p.age || '') + '</td><td>' + (p.gender || '') + '</td><td>' + (p.berth || '') + '</td><td>' + (p.food || '') + '</td></tr>';
+  }).join('');
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Booking Slip ' + r.id + '</title>' +
+    '<style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px}h1{font-size:17px;margin:0 0 2px}.muted{color:#666;font-size:12px}' +
+    'table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}' +
+    'th{background:#f2f2f2}.tot{font-size:15px;font-weight:800;margin-top:10px}.box{border:1px solid #ccc;border-radius:8px;padding:10px;margin-top:10px;font-size:12.5px}</style></head><body>' +
+    '<h1>Vishwajeet Parmar Rajput Train Ticket</h1>' +
+    '<div class="muted">Owner: Vishwajeet Parmar Rajput &bull; +91 9530646737</div>' +
+    '<div class="box"><b>BOOKING REQUEST SLIP</b><br>Request ID: <b>' + r.id + '</b><br>IRCTC username: ' + (r.irtc || '-') +
+    '<br>Status: <b>' + (r.paid ? 'PAID' : 'PENDING') + '</b></div>' +
+    '<div class="box"><b>' + (r.train || '') + ' (' + (r.no || '') + ')</b><br>' + (r.from || '') + ' &rarr; ' + (r.to || '') +
+    '<br>Date: ' + (r.date || '') + ' &bull; Class: ' + (r.cls || '') + ' &bull; Quota: ' + (r.quota || '') + '<br>Boarding: ' + (r.boarding || '-') + '</div>' +
+    '<table><thead><tr><th>#</th><th>Name</th><th>Age</th><th>G</th><th>Berth</th><th>Food</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="tot">Amount payable: Rs.' + (r.amount || 0) + '</div></body></html>';
+  var w = window.open('', '_blank');
+  if (!w) { toast('Popup block hai'); return; }
+  w.document.write(html); w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 300);
+}
+function reqPaid(id) {
+  var g = reqGet(id); if (!g) return;
+  g.list[g.idx].paid = true;
+  localStorage.setItem('vpr_requests', JSON.stringify(g.list));
+  loadRequests();
+  toast('Request ' + id + ' PAID mark ho gayi');
+}
+function reqDel(id) {
+  var g = reqGet(id); if (!g) return;
+  g.list.splice(g.idx, 1);
+  localStorage.setItem('vpr_requests', JSON.stringify(g.list));
+  loadRequests();
+  toast('Request delete ho gayi');
+}
 function sendReqWhatsApp() {
   var t = kitTrain || {}, s = currentSearch || {}, sel = kitPaxSel || [];
   var amt = window.__kitTotal || 0;
@@ -2238,6 +2323,7 @@ function submitRequest() {
   });
   var txt = lines.join('\n');
   window.__reqText = txt;
+  try { saveRequest(); } catch (e) {}
   var box = document.getElementById('kitReqBox');
   if (box) box.innerHTML =
     '<div class="warn-box" style="border-color:#2f7d4f"><b>' + (LANG === 'hi' ? 'बुकिंग रिक्वेस्ट तैयार है ✅' : 'Booking request ready ✅') + '</b><br>' +
@@ -3113,7 +3199,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-24';
+var APP_VERSION = '2026-10-10-25';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
