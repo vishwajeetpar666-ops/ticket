@@ -2857,6 +2857,46 @@ async function callAi(s, q) {
   return (ch.message || {}).content || 'No reply';
 }
 
+function _tm(s) { s = String(s || ''); var m = s.match(/^(\d{1,2}):(\d{2})$/); if (m) return (+m[1]) * 60 + (+m[2]); return /^\d{3,4}$/.test(s) ? (parseInt(s.slice(0, -2), 10) * 60 + parseInt(s.slice(-2), 10)) : null; }
+function fillTimes(list, dep, arr) {
+  /* Some trains in the reference data have no per-stop time. We estimate it by
+     interpolating between the nearest stops that do have a time (marked with ~). */
+  var mins = list.map(function (x) { return _tm(x.time); });
+  var abs = [], prev = null, day = 0;
+  for (var i = 0; i < mins.length; i++) {
+    if (mins[i] === null) { abs.push(null); continue; }
+    var m = mins[i] + day * 1440;
+    if (prev !== null && m < prev) { day++; m = mins[i] + day * 1440; }
+    abs[i] = m; prev = m;
+  }
+  var known = [];
+  for (var i2 = 0; i2 < abs.length; i2++) { if (abs[i2] !== null) known.push(i2); }
+  var out = abs.slice();
+  if (!known.length) {
+    var d0 = _tm(dep), a0 = _tm(arr);
+    if (a0 !== null && d0 !== null && a0 < d0) a0 += 1440;
+    if (d0 !== null && a0 !== null) {
+      var n = list.length - 1;
+      for (var i3 = 0; i3 < list.length; i3++) out[i3] = Math.round(d0 + (a0 - d0) * (n ? i3 / n : 0));
+    }
+  } else {
+    for (var i4 = known[0] - 1; i4 >= 0; i4--) out[i4] = abs[known[0]] - (known[0] - i4) * 15;
+    for (var i5 = known[known.length - 1] + 1; i5 < list.length; i5++) out[i5] = abs[known[known.length - 1]] + (i5 - known[known.length - 1]) * 15;
+    for (var g = 0; g < known.length - 1; g++) {
+      var a = known[g], b = known[g + 1], span = b - a;
+      if (span <= 1) continue;
+      for (var i6 = a + 1; i6 < b; i6++) out[i6] = Math.round(abs[a] + (abs[b] - abs[a]) * (i6 - a) / span);
+    }
+  }
+  return list.map(function (x, i7) {
+    var m = out[i7];
+    if (m === null || m === undefined) return { code: x.code, time: '', est: false };
+    var t = ((m % 1440) + 1440) % 1440, hh = Math.floor(t / 60), mm = t % 60;
+    var s = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+    var isKnown = (mins[i7] !== null);
+    return { code: x.code, time: isKnown ? s : '~' + s, est: !isKnown };
+  });
+}
 function findViaRoutes(REF, A, B, maxHubs) {
   function ft(s) { return (s && s.length === 4) ? s.slice(0, 2) + ':' + s.slice(2) : '--:--'; }
   var after = {}, before = {};
@@ -2879,8 +2919,20 @@ function findViaRoutes(REF, A, B, maxHubs) {
     var a2 = -1, b3 = -1;
     for (var z = 0; z < p1.length; z++) { if (p1[z].split(' ')[0] === A) { a2 = z; break; } }
     for (var z2 = 0; z2 < p2.length; z2++) { if (p2[z2].split(' ')[0] === B) { b3 = z2; break; } }
+    var list1 = [], list2 = [];
+    for (var q1 = 0; q1 < p1.length; q1++) { var bb1 = p1[q1].split(' '); list1.push({ code: bb1[0], time: bb1[1] || '' }); }
+    for (var q2 = 0; q2 < p2.length; q2++) { var bb2 = p2[q2].split(' '); list2.push({ code: bb2[0], time: bb2[1] || '' }); }
+    var f1 = fillTimes(list1, t1[4], t1[5]), f2 = fillTimes(list2, t2[4], t2[5]);
+    var hubTime1 = '', hubTime2 = '';
+    for (var w1 = 0; w1 < f1.length; w1++) { if (f1[w1].code === hub) { hubTime1 = f1[w1].time; break; } }
+    for (var w2 = 0; w2 < f2.length; w2++) { if (f2[w2].code === hub) { hubTime2 = f2[w2].time; break; } }
+    var depA = f1.length ? f1[0].time : (t1[4] || '');
     out.push({
       hub: hub,
+      hubTime1: hubTime1,
+      hubTime2: hubTime2,
+      depA: depA,
+      arrB: (f2.length ? f2[f2.length - 1].time : (t2[5] || '')),
       t1: { no: t1[0], name: t1[1], dep: ft(a2 >= 0 ? p1[a2].split(' ')[1] : ''), arr: ft(e1.time) },
       t2: { no: t2[0], name: t2[1], dep: ft(e2.time), arr: ft(b3 >= 0 ? p2[b3].split(' ')[1] : '') }
     });
@@ -2902,8 +2954,8 @@ async function runVia() {
     box.innerHTML = '<b>&#128257; ' + (LANG === 'hi' ? 'CONNECTING (VIA) ROUTES' : 'CONNECTING (VIA) ROUTES') + '</b> &mdash; ' + s.from + ' &rarr; ' + s.to + ' (' + list.length + ')<br>' +
       (list.length ? list.map(function (x) {
         return '<div class="pax-row" style="display:block"><b>' + (LANG === 'hi' ? 'जंक्शन: ' : 'Junction: ') + x.hub + '</b>' +
-          '<div class="note">1) ' + x.t1.no + ' ' + x.t1.name + ' &mdash; ' + s.from + ' ' + x.t1.dep + ' &rarr; ' + x.hub + ' ' + x.t1.arr + '</div>' +
-          '<div class="note">2) ' + x.t2.no + ' ' + x.t2.name + ' &mdash; ' + x.hub + ' ' + x.t2.dep + ' &rarr; ' + s.to + ' ' + x.t2.arr + '</div></div>';
+          '<div class="note">1) ' + x.t1.no + ' ' + x.t1.name + ' &mdash; ' + s.from + ' ' + (x.depA || x.t1.dep) + ' &rarr; ' + x.hub + ' ' + (x.hubTime1 || x.t1.arr) + '</div>' +
+          '<div class="note">2) ' + x.t2.no + ' ' + x.t2.name + ' &mdash; ' + x.hub + ' ' + (x.hubTime2 || x.t2.dep) + ' &rarr; ' + s.to + ' ' + (x.arrB || x.t2.arr) + '</div></div>';
       }).join('') : '<span class="note">' + (LANG === 'hi' ? 'Koi connecting route nahin mila. IRCTC par dekhein.' : 'No connecting route found. Check IRCTC.') + '</span>');
   } catch (e) { box.textContent = 'Error: ' + e.message; }
 }
@@ -3011,6 +3063,8 @@ async function showRoute(idx, btn) {
   try {
     var r = await api('/api/schedule?no=' + encodeURIComponent(t.no));
     var stops = r.stops || [];
+    try { window.__filledTimes = fillTimes(stops.map(function (x) { return { code: x.code, time: x.time }; }), r.train && r.train.dep, r.train && r.train.arr); }
+    catch (e) { window.__filledTimes = null; }
     var s = currentSearch || {}, fi = -1, ti = -1;
     stops.forEach(function (x, k) { if (x.code === s.from && fi < 0) fi = k; if (x.code === s.to && fi >= 0 && ti < 0) ti = k; });
     var days = 1, prev = null, rows = '';
@@ -3031,6 +3085,7 @@ async function showRoute(idx, btn) {
       var _stt = _s ? (_s[2] || '') : '';
       var _dst = _s ? (_s[6] || '') : '';
       var _t = (x.time && /\d{1,2}:\d{2}/.test(x.time)) ? x.time : '\u2014';
+      if (window.__filledTimes && window.__filledTimes[k] && window.__filledTimes[k].time) _t = window.__filledTimes[k].time;
       rows += '<tr' + style + '><td><b class="rn">' + _nm + '</b> <span class="rc">' + x.code + '</span>' +
         (_stt ? '<div class="sn">' + _stt + (_dst && _dst !== _stt ? ' &middot; ' + _dst : '') + '</div>' : '') +
         '</td><td>' + _t + '</td><td>' + _t + '</td><td>Day ' + days + '</td><td>' + tag + '</td></tr>';
@@ -3231,7 +3286,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-26';
+var APP_VERSION = '2026-10-10-27';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
