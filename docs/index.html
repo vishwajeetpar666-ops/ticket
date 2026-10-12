@@ -642,6 +642,18 @@
     <!-- PASSENGERS -->
     <section id="view-quick" class="hidden">
       <div class="card">
+        <div class="card-h" data-en="FARE CALCULATOR - ANY TWO STATIONS" data-hi="किराया कैलकुलेटर - कोई भी दो स्टेशन">FARE CALCULATOR - ANY TWO STATIONS</div>
+        <div class="card-b">
+          <div class="note" style="margin-bottom:10px">Kisi bhi do station ka <b>anumaanit distance</b> aur <b>class-wise kiraya</b> (2S / SL / 3E / 3A / 2A / 1A).</div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+            <div class="station-field" style="position:relative"><div class="cap">FROM</div><input id="fcFrom" placeholder="e.g. Ludhiana" autocomplete="off"><div class="autocomplete" id="fcFromAc"></div></div>
+            <div class="station-field" style="position:relative"><div class="cap">TO</div><input id="fcTo" placeholder="e.g. Darbhanga" autocomplete="off"><div class="autocomplete" id="fcToAc"></div></div>
+            <button class="btn-search" style="height:40px" onclick="calcFare()" data-en="CALCULATE" data-hi="किराया देखो">CALCULATE</button>
+          </div>
+          <div id="fcOut"></div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-h" data-en="PASSENGER MASTER LIST - FILL ONCE, READY EVERY TIME" data-hi="पैसेंजर मास्टर लिस्ट - एक बार भरें, हर बार तैयार">PASSENGER MASTER LIST - FILL ONCE, READY EVERY TIME</div>
         <div class="card-b">
           <div class="note" style="margin-bottom:12px" data-html="1" data-en="Save all passengers <b>once</b> - they are stored on your portal account. While booking, press <b>Copy All</b> and paste straight into the IRCTC passenger form - the single biggest speed trick for tatkal." data-hi="सारे यात्री <b>एक बार</b> सेव करें - ये आपके पोर्टल अकाउंट पर सेव रहते हैं। बुकिंग के समय <b>Copy All</b> दबाकर सीधे IRCTC फॉर्म में पेस्ट करें - तत्काल की सबसे बड़ी स्पीड ट्रिक।">Save all passengers <b>once</b> - they are stored on your portal account. While booking, press <b>Copy All</b> and paste straight into the IRCTC passenger form - the single biggest speed trick for tatkal.</div>
@@ -1675,6 +1687,8 @@ function attachAutocomplete(inputId, acId) {
 attachAutocomplete('fromInput', 'fromAc');
 attachAutocomplete('toInput', 'toAc');
 attachAutocomplete('stnNo', 'stnNoAc');
+attachAutocomplete('fcFrom', 'fcFromAc');
+attachAutocomplete('fcTo', 'fcToAc');
 function pickStation(inputId, acId, code) {
   var st = STATIONS.filter(function (s) { return s[1] === code; })[0];
   document.getElementById(inputId).value = st[0] + ' (' + st[1] + ')';
@@ -1731,6 +1745,51 @@ function resolveCode(v) {
   var pool = pref.length ? pref : word;
   if (pool.length) { pool.sort(function (a, b) { return (b[5] || 0) - (a[5] || 0); }); return pool[0][1]; }
   return v.toUpperCase();
+}
+var COORDS = null, COORDS_P = null;
+function loadCoords() {
+  if (COORDS) return Promise.resolve(COORDS);
+  if (!COORDS_P) {
+    COORDS_P = fetch('./station-coords.json').then(function (r) { return r.json(); }).then(function (d) { COORDS = d; return d; })
+      .catch(function () { COORDS = {}; return COORDS; });
+  }
+  return COORDS_P;
+}
+function haversineKm(a, b) {
+  var R = 6371.0;
+  var p1 = a[0] * Math.PI / 180, p2 = b[0] * Math.PI / 180;
+  var dp = (b[0] - a[0]) * Math.PI / 180, dl = (b[1] - a[1]) * Math.PI / 180;
+  var hh = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  return 2 * R * Math.asin(Math.sqrt(hh));
+}
+function fareFor(km, cls) {
+  var rate = { '2S': 0.33, 'SL': 0.52, '3E': 1.10, 'CC': 1.20, '3A': 1.25, '2A': 1.80, '1A': 2.90 }[cls] || 0.48;
+  var base = (cls === '2S' || cls === 'SL') ? 50 : 100;
+  return Math.round((rate * km + base) / 5) * 5;
+}
+async function calcFare() {
+  normalizeStationInput('fcFrom'); normalizeStationInput('fcTo');
+  var f = resolveCode((document.getElementById('fcFrom') || {}).value || '');
+  var t = resolveCode((document.getElementById('fcTo') || {}).value || '');
+  var out = document.getElementById('fcOut');
+  if (!out) return;
+  if (!f || !t) { out.innerHTML = '<div class="warn-box" style="margin-top:10px">Dono station chuno (list se ya naam likh kar).</div>'; return; }
+  if (f === t) { out.innerHTML = '<div class="warn-box" style="margin-top:10px">From aur To alag hone chahiye.</div>'; return; }
+  out.innerHTML = '<div class="note" style="margin-top:10px">Distance nikal raha hoon\u2026</div>';
+  var c = await loadCoords();
+  var a = c[f], b = c[t];
+  if (!a || !b) { out.innerHTML = '<div class="warn-box" style="margin-top:10px">In station ka location data nahin hai. Doosra station try karo.</div>'; return; }
+  var aerial = Math.round(haversineKm(a, b));
+  var km = Math.round(aerial * 1.3);   /* approx rail distance */
+  var classes = ['2S', 'SL', '3E', '3A', '2A', '1A'];
+  var rows = classes.map(function (cl) { return '<tr><td><b>' + cl + '</b></td><td>\u20b9' + fareFor(km, cl) + '</td></tr>'; }).join('');
+  var nf = stnName(f), nt = stnName(t);
+  out.innerHTML = '<div style="margin-top:12px">' +
+    '<div class="pax-row"><b>' + (nf || f) + ' (' + f + ')</b><span class="note">' + (stnState(f) || '') + '</span></div>' +
+    '<div class="pax-row"><b>' + (nt || t) + ' (' + t + ')</b><span class="note">' + (stnState(t) || '') + '</span></div>' +
+    '<div class="pax-row" style="border-top:1px solid var(--border)"><b>Approx distance</b><span class="note" style="color:#ff9a4d;font-weight:800">~' + km + ' km</span></div>' +
+    '<div style="overflow-x:auto;margin-top:8px"><table class="plist"><thead><tr><th>Class</th><th>Indicative fare</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="note" style="margin-top:6px">Ye <b>anumaanit</b> hai (station location se nikala gaya). Asli rail distance aur kiraya IRCTC par confirm karein.</div></div>';
 }
 function stnInfo(code) {
   for (var i = 0; i < STATIONS.length; i++) { if (STATIONS[i][1] === code) return STATIONS[i]; }
@@ -2991,7 +3050,7 @@ loadSettings();
 updateIdField();
 api('/api/config').then(function (c) { CONFIG = c; }).catch(function () {});
 api('/api/me').then(function (r) { enterApp(r.user); }).catch(function () {});
-var APP_VERSION = '2026-10-10-20';
+var APP_VERSION = '2026-10-10-21';
 /* ---- accessibility: labels + live regions (screen readers) ---- */
 (function addAria() {
   var map = {
